@@ -1,7 +1,7 @@
 import { Alert, Button, Box, Text } from '@mantine/core';
 import { IconLock } from '@tabler/icons-react';
 import { useOffline } from '../context/OfflineContext';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
 import { useSwipe } from '../hooks/useSwipe';
@@ -19,6 +19,8 @@ import { PlaybackDock, type PlaybackNav } from '../components/PlaybackDock';
 import { PlaybackMoreMenu } from '../components/PlaybackMoreMenu';
 import { SectionBar } from '../components/SectionBar';
 import { useSongSections } from '../hooks/useSongSections';
+import { useLiveSession } from '../hooks/useLiveSession';
+import { LiveBar } from '../components/LiveBar';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { EmptyState } from '../components/EmptyState';
 import { SetlistEntryEditor } from '../components/SetlistEntryEditor';
@@ -42,7 +44,7 @@ interface SetlistPlayViewProps {
 export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, navigate }: SetlistPlayViewProps) {
   const { t } = useI18n();
 
-  const { readOnly } = useOffline();
+  const { readOnly, online } = useOffline();
   const [editing, setEditing] = useState(false);
 
   // Global setlist settings
@@ -52,7 +54,7 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
   const twoColState = useTwoCol();
   const layout = usePlaybackLayout();
 
-  const { loadError, setlist, entry, index, total, prev, next, exit, updateEntry, isModified, saveOnline, saveLocal } = useSetlistPlayer({
+  const { loadError, setlist, entry, index, total, goTo, prev, next, exit, updateEntry, isModified, saveOnline, saveLocal } = useSetlistPlayer({
     setlistId,
     isLocal: _isLocal,
     initialIndex,
@@ -64,8 +66,14 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
 
   const content = entry ? entryContent(entry) : '';
 
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const isOwner = setlist?.user_id && user && setlist.user_id === user.id;
+
+  // Live session: the leader's taps move everyone's screen. Public, server-backed setlists only.
+  const liveEnabled = !!setlist && !setlist.isLocal && setlist.visibility !== 'private' && online;
+  const live = useLiveSession({ setlistId, enabled: liveEnabled, token: user?.token });
+  const canLead = !!user && liveEnabled && (!!isOwner || isAdmin);
+  const syncing = !!live.remote?.active && live.following && !live.leading;
   const [keepScreenOn, setKeepScreenOn] = useLocalStorage({ key: 'cv_keep_screen_on', defaultValue: true, getInitialValueInEffect: false });
   const wakeLock = useWakeLock(keepScreenOn && !!setlist);
 
@@ -84,7 +92,48 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
   const hideYt = effectivePrefs.hideYt;
   const { renderedHtml, currentKey: keyDisplay, hasKey } = useRenderedChords(content, entry?.target_key, !!effNum);
   const songSections = useSongSections(editing || entry?.is_private_placeholder ? '' : renderedHtml);
-  const showSections = layout !== 'desktop' && !editing && songSections.sections.length > 1;
+  const showSections = (layout !== 'desktop' || live.leading) && !editing && songSections.sections.length > 1;
+
+  // Follower: go where the leader is. The section jump waits until the new song's sections are on screen.
+  const [target, setTarget] = useState<{ index: number; section: number } | null>(null);
+  const remoteSeq = live.remote?.seq;
+  useEffect(() => {
+    const r = live.remote;
+    if (!r?.active || !live.following || live.leading) return;
+    setTarget({ index: r.index, section: r.section });
+    if (r.index !== index) goTo(r.index);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- react to each new leader move, not to every render
+  }, [remoteSeq, live.following, live.leading]);
+  useEffect(() => {
+    if (!target || target.index !== index || songSections.forHtml !== renderedHtml) return;
+    const { section } = target;
+    const { jumpTo, sections } = songSections;
+    // Not cancelled on re-render: clearing the target re-renders straight away.
+    window.setTimeout(() => {
+      if (section >= 0 && section < sections.length) jumpTo(section);
+      else window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 80);
+    setTarget(null);
+  }, [target, index, songSections, renderedHtml]);
+
+  // Leader: changing song tells everyone (top of the song).
+  const { leading, publish } = live;
+  useEffect(() => { if (leading) publish(index, -1); }, [index, leading, publish]);
+
+  // A follower who moves on their own stops following until they tap Re-sync.
+  const pauseIfSyncing = useCallback(() => { if (syncing) live.setFollowing(false); }, [syncing, live]);
+  const jumpToSection = useCallback((i: number) => {
+    songSections.jumpTo(i);
+    if (live.leading) live.publish(index, i);
+    else pauseIfSyncing();
+  }, [songSections, live, index, pauseIfSyncing]);
+  const userPrev = useCallback(() => { pauseIfSyncing(); prev(); }, [pauseIfSyncing, prev]);
+  const userNext = useCallback(() => { pauseIfSyncing(); next(); }, [pauseIfSyncing, next]);
+  const stepSection = useCallback((dir: 1 | -1) => {
+    const n = songSections.sections.length;
+    if (!n) return;
+    jumpToSection(Math.min(n - 1, Math.max(0, songSections.active + dir)));
+  }, [songSections, jumpToSection]);
 
   // Key stepping
   const stepEntryKey = useCallback((direction: 1 | -1) => {
@@ -128,12 +177,15 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
   }, [entry, setlist, readOnly]);
 
   // Swipe
-  const swipeRef = useSwipe({ onNext: next, onPrev: prev, enabled: !editing && !!setlist });
+  const swipeRef = useSwipe({ onNext: userNext, onPrev: userPrev, enabled: !editing && !!setlist });
 
   // Keyboard shortcuts
   const shortcuts = useMemo(() => ({
-    'ArrowLeft': (e: KeyboardEvent) => { e.preventDefault(); prev(); },
-    'ArrowRight': (e: KeyboardEvent) => { e.preventDefault(); next(); },
+    'ArrowLeft': (e: KeyboardEvent) => { e.preventDefault(); userPrev(); },
+    'ArrowRight': (e: KeyboardEvent) => { e.preventDefault(); userNext(); },
+    // Page turner pedals usually send PageDown / PageUp: step through sections.
+    'PageDown': (e: KeyboardEvent) => { e.preventDefault(); stepSection(1); },
+    'PageUp': (e: KeyboardEvent) => { e.preventDefault(); stepSection(-1); },
     'ArrowUp': (e: KeyboardEvent) => { e.preventDefault(); stepEntryKey(1); },
     'ArrowDown': (e: KeyboardEvent) => { e.preventDefault(); stepEntryKey(-1); },
     'n': () => { if (entry) toggleEntryNum(!effNum); },
@@ -141,7 +193,7 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
     'e': (e: KeyboardEvent) => { e.preventDefault(); openEditor(); },
     'E': (e: KeyboardEvent) => { e.preventDefault(); openEditor(); },
     'Escape': () => { if (editing) setEditing(false); else exit(); },
-  }), [prev, next, stepEntryKey, entry, effNum, toggleEntryNum, openEditor, editing, exit]);
+  }), [userPrev, userNext, stepSection, stepEntryKey, entry, effNum, toggleEntryNum, openEditor, editing, exit]);
 
   useKeyboardShortcuts(shortcuts, !!setlist);
 
@@ -211,7 +263,17 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
   const editSong = user && !readOnly && !entry.is_private_placeholder
     ? () => navigate('song-edit', songEditFromSetlist(entry.song_id, 'setlist-play', setlistId, index))
     : undefined;
-  const nav: PlaybackNav = { onPrev: prev, onNext: next, hasPrev: index > 0, hasNext: index < total - 1 };
+  const nav: PlaybackNav = { onPrev: userPrev, onNext: userNext, hasPrev: index > 0, hasNext: index < total - 1 };
+  const liveBar = (
+    <LiveBar remote={live.remote} status={live.status} leading={live.leading} following={live.following} canLead={canLead} error={live.error}
+      onStartLeading={() => void live.startLeading(index, songSections.sections.length ? songSections.active : -1)}
+      onStopLeading={() => void live.stopLeading()}
+      onPause={() => live.setFollowing(false)} onResync={() => live.setFollowing(true)} />
+  );
+  const sectionBar = showSections
+    ? <SectionBar sections={songSections.sections} active={songSections.active} onJump={jumpToSection} />
+    : null;
+  const hasLive = live.leading || !!live.remote?.active || (canLead && live.status === 'connected');
   const more = (
     <PlaybackMoreMenu nashville={!!effNum} nashvilleDisabled={toolbar.nashvilleDisabled} onNashvilleChange={toggleEntryNum}
       onExportPdf={handleExportAllPdf} onReset={resetEntryLayout} canReset={canReset}
@@ -219,10 +281,11 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
   );
 
   return (
-    <div ref={swipeRef} className={`setlist-play-container${layout === 'desktop' ? '' : ' has-dock'}${showSections ? ' has-sections' : ''}`}>
+    <div ref={swipeRef} className={`setlist-play-container${layout === 'desktop' ? '' : ' has-dock'}${showSections ? ' has-sections' : ''}${hasLive ? ' has-live' : ''}`}>
       <PlaybackTopBar layout={layout} title={entry.title} position={`${index + 1} of ${total}, ${setlist.name}`}
         nav={nav} onExit={exit} toolbar={toolbar} more={more}
         bpm={entry.bpm} youtubeUrl={hideYt ? null : entry.youtube_url} onEdit={editSong} />
+      {layout === 'desktop' && hasLive && <div className="live-desktop" data-no-swipe>{liveBar}{sectionBar}</div>}
 
 
       {editing ? (
@@ -245,7 +308,7 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
         </>
       )}
       {layout !== 'desktop' && <PlaybackDock layout={layout} nav={nav} toolbar={toolbar}
-        top={showSections ? <SectionBar sections={songSections.sections} active={songSections.active} onJump={songSections.jumpTo} /> : null} />}
+        top={<>{liveBar}{sectionBar}</>} />}
     </div>
   );
 }

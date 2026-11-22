@@ -10,6 +10,7 @@ const { createSetlistsRouter } = require('./routes/setlists');
 const { createAdminRouter } = require('./routes/admin');
 const { createSettingsRouter } = require('./routes/settings');
 const { createOfflineRouter } = require('./routes/offline');
+const { createLiveRouter, closeLiveStreams } = require('./routes/live');
 
 if (!process.env.JWT_SECRET) {
   console.error('FATAL: JWT_SECRET environment variable is required. Set it in your .env file.');
@@ -18,6 +19,8 @@ if (!process.env.JWT_SECRET) {
 
 const app = createApp((app) => {
   app.use(express.static(path.join(__dirname, 'public')));
+  // Live sessions carry their own rate limits; mounted first so the general limiter skips them.
+  app.use('/api/live', createLiveRouter());
   app.use('/api', createApiRateLimiter());
   app.use('/api/auth', createAuthRouter());
   app.use('/api', createSongsRouter());
@@ -35,6 +38,7 @@ function gracefulShutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`${signal} received, shutting down...`);
+  closeLiveStreams();
   const forceExit = setTimeout(() => { db.close(); process.exit(1); }, 5000);
   server.close(() => {
     clearTimeout(forceExit);

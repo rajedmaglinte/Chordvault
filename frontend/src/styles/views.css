@@ -182,3 +182,19 @@
   100% { box-shadow: 0 0 0 6px transparent; }
 }
 @media (prefers-reduced-motion: reduce) { .chord-sheet .paragraph.section-flash { animation: none; } }
+
+/* -- Live session strip ------------------- */
+.live-bar { padding: 8px 14px; background: var(--band); border-top: 1px solid var(--border); min-height: 48px; }
+.live-bar.is-leading { background: var(--chord); color: #fff; border-color: var(--chord); }
+.live-bar.is-following { background: color-mix(in srgb, var(--chord) 18%, var(--band)); }
+.live-dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; flex: 0 0 auto; }
+.live-bar.is-following .live-dot { background: var(--chord); }
+.live-bar:is(.is-leading, .is-following) .live-dot { animation: live-pulse 1.6s ease-in-out infinite; }
+.live-bar.is-paused .live-dot { background: var(--muted); }
+@keyframes live-pulse { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .live-dot { animation: none !important; } }
+.live-desktop { position: sticky; top: 0; z-index: 50; }
+.live-desktop .live-bar { border-top: none; border-bottom: 1px solid var(--border); padding-inline: 20px; }
+.live-desktop .section-bar { padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.setlist-play-container.has-dock.has-live .chord-sheet-wrap { padding-bottom: calc(76px + 48px + env(safe-area-inset-bottom) + 32px); }
+.setlist-play-container.has-dock.has-sections.has-live .chord-sheet-wrap { padding-bottom: calc(154px + 48px + env(safe-area-inset-bottom) + 32px); }
