@@ -147,6 +147,7 @@
   "setlist.exit": "Exit",
   "setlist.prev": "Prev",
   "setlist.next": "Next",
+  "setlist.sections": "Song sections",
   "setlist.saveToSetlist": "Save to Setlist",
   "setlist.saveAsVersion": "Save as New Version",
   "setlist.editSaved": "Edits saved to setlist entry",

@@ -134,3 +134,51 @@
 }
 
 .setlist-drag-handle { touch-action: none; min-width: 44px; min-height: 44px; }
+
+/* -- Song section buttons (Intro, V1, C, B...) -- */
+.section-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 8px 10px 0;
+  background: var(--band);
+  scroll-padding-inline: 10px;
+  /* Let the row scroll sideways without the setlist swipe taking over. */
+  touch-action: pan-x;
+}
+.section-bar::-webkit-scrollbar { display: none; }
+.section-bar-btn {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--raise);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 650;
+  text-align: center;
+  white-space: nowrap;
+  transition: background-color 120ms, color 120ms, border-color 120ms;
+}
+.section-bar-btn[data-kind="chorus"] { border-color: var(--line-strong); background: color-mix(in srgb, var(--band) 40%, var(--raise)); }
+.section-bar-btn[aria-current="true"] { background: var(--chord); border-color: var(--chord); color: #fff; }
+.section-bar-btn:focus-visible { outline: 2px solid var(--chord); outline-offset: 2px; }
+@media (pointer: coarse) { .section-bar-btn { min-height: 44px; } }
+
+/* Standalone row on the song page sits on the screen's bottom edge. */
+.section-dock .section-bar { padding-bottom: calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); }
+.song-view.has-sections { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+
+/* The setlist dock grows by one row of section buttons. */
+.setlist-play-container.has-dock.has-sections .chord-sheet-wrap { padding-bottom: calc(128px + env(safe-area-inset-bottom) + 32px); }
+
+/* A tapped section glows briefly so the eye lands on it. */
+.chord-sheet .paragraph.section-flash { animation: section-flash 1.2s ease-out; border-radius: 12px; }
+@keyframes section-flash {
+  0%, 25% { box-shadow: 0 0 0 6px var(--chord-tint); background-color: var(--chord-tint); }
+  100% { box-shadow: 0 0 0 6px transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .chord-sheet .paragraph.section-flash { animation: none; } }

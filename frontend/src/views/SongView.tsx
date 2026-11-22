@@ -1,7 +1,7 @@
 import { useLibraryRead } from '../hooks/useLibraryRead';
 import { useOffline } from '../context/OfflineContext';
 import { useDisclosure } from '@mantine/hooks';
-import { Alert, Badge, Paper, Button, NativeSelect, Group, Box, Text, Divider, ScrollArea } from '@mantine/core';
+import { Affix, Alert, Badge, Paper, Button, NativeSelect, Group, Box, Text, Divider, ScrollArea } from '@mantine/core';
 import { SectionTitle } from '../components/SectionTitle';
 import { IconBrandYoutube, IconLock, IconPencil, IconPlus } from '@tabler/icons-react';
 import { BackButton } from '../components/BackButton';
@@ -15,6 +15,9 @@ import { useFontScale } from '../hooks/useFontScale';
 import { useTwoCol } from '../hooks/useTwoCol';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { ChordSheet } from '../components/ChordSheet';
+import { SectionBar } from '../components/SectionBar';
+import { useSongSections } from '../hooks/useSongSections';
+import { usePlaybackLayout } from '../hooks/usePlaybackLayout';
 import { Toolbar } from '../components/Toolbar';
 import { Loading } from '../components/Loading';
 import { AddToSetlistModal } from '../components/AddToSetlistModal';
@@ -68,6 +71,9 @@ export function SongView({ songId, navigate }: SongViewProps) {
 
   const content = song?.content || '';
   const chord = useChordRenderer(content);
+  const layout = usePlaybackLayout();
+  const songSections = useSongSections(chord.renderedHtml);
+  const showSections = layout !== 'desktop' && songSections.sections.length > 1;
   const { setTargetKey: resetChordKey, setNashville: resetChordNashville } = chord;
   const fontScale = useFontScale();
   const twoColState = useTwoCol();
@@ -126,7 +132,7 @@ export function SongView({ songId, navigate }: SongViewProps) {
   if (!song) return <Loading />;
 
   return (
-    <div lang={song.language || undefined}>
+    <div lang={song.language || undefined} className={showSections ? 'song-view has-sections' : 'song-view'}>
       <Box mb="lg">
         <Group justify="space-between" mb="md">
           <BackButton onClick={() => navigate(user ? 'my-songs' : 'browse', {}, { leave: true })}>{t('songView.back')}</BackButton>
@@ -234,6 +240,12 @@ export function SongView({ songId, navigate }: SongViewProps) {
             </Paper>
           ))}
         </Box>
+      )}
+
+      {showSections && (
+        <Affix withinPortal={false} position={{ bottom: 0, left: 0, right: 0 }} zIndex={60} className="section-dock">
+          <SectionBar sections={songSections.sections} active={songSections.active} onJump={songSections.jumpTo} />
+        </Affix>
       )}
 
       <AddToSetlistModal

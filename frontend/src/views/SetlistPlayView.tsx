@@ -17,6 +17,8 @@ import { usePlaybackLayout } from '../hooks/usePlaybackLayout';
 import { PlaybackTopBar } from '../components/PlaybackTopBar';
 import { PlaybackDock, type PlaybackNav } from '../components/PlaybackDock';
 import { PlaybackMoreMenu } from '../components/PlaybackMoreMenu';
+import { SectionBar } from '../components/SectionBar';
+import { useSongSections } from '../hooks/useSongSections';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { EmptyState } from '../components/EmptyState';
 import { SetlistEntryEditor } from '../components/SetlistEntryEditor';
@@ -81,6 +83,8 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
   const effFont = effectivePrefs.fontSize;
   const hideYt = effectivePrefs.hideYt;
   const { renderedHtml, currentKey: keyDisplay, hasKey } = useRenderedChords(content, entry?.target_key, !!effNum);
+  const songSections = useSongSections(editing || entry?.is_private_placeholder ? '' : renderedHtml);
+  const showSections = layout !== 'desktop' && !editing && songSections.sections.length > 1;
 
   // Key stepping
   const stepEntryKey = useCallback((direction: 1 | -1) => {
@@ -215,7 +219,7 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
   );
 
   return (
-    <div ref={swipeRef} className={`setlist-play-container${layout === 'desktop' ? '' : ' has-dock'}`}>
+    <div ref={swipeRef} className={`setlist-play-container${layout === 'desktop' ? '' : ' has-dock'}${showSections ? ' has-sections' : ''}`}>
       <PlaybackTopBar layout={layout} title={entry.title} position={`${index + 1} of ${total}, ${setlist.name}`}
         nav={nav} onExit={exit} toolbar={toolbar} more={more}
         bpm={entry.bpm} youtubeUrl={hideYt ? null : entry.youtube_url} onEdit={editSong} />
@@ -240,7 +244,8 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
           )}
         </>
       )}
-      {layout !== 'desktop' && <PlaybackDock layout={layout} nav={nav} toolbar={toolbar} />}
+      {layout !== 'desktop' && <PlaybackDock layout={layout} nav={nav} toolbar={toolbar}
+        top={showSections ? <SectionBar sections={songSections.sections} active={songSections.active} onJump={songSections.jumpTo} /> : null} />}
     </div>
   );
 }
