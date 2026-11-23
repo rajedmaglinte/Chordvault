@@ -9,6 +9,8 @@ interface LiveBarProps {
   following: boolean;
   canLead: boolean;
   error: string | null;
+  /** Why live sync is not offered here (shown instead of nothing, so people know what to change). */
+  notice?: string | null;
   onStartLeading: () => void;
   onStopLeading: () => void;
   onPause: () => void;
@@ -16,7 +18,7 @@ interface LiveBarProps {
 }
 
 /** One line of live-session status and controls for the setlist player. */
-export function LiveBar({ remote, status, leading, following, canLead, error, onStartLeading, onStopLeading, onPause, onResync }: LiveBarProps) {
+export function LiveBar({ remote, status, leading, following, canLead, error, notice, onStartLeading, onStopLeading, onPause, onResync }: LiveBarProps) {
   const live = !!remote?.active;
   const followers = Math.max(0, (remote?.listeners ?? 1) - 1);
   const reconnecting = status === 'connecting' && (leading || live);
@@ -53,6 +55,14 @@ export function LiveBar({ remote, status, leading, following, canLead, error, on
       <Group className="live-bar is-idle" wrap="nowrap" gap="xs" data-no-swipe>
         <Text size="sm" flex={1} truncate>Lead the team: everyone playing this setlist follows your song and section taps.</Text>
         <Button size="sm" className="live-lead-btn" leftSection={<IconBroadcast size={18} aria-hidden />} onClick={onStartLeading}>Lead live</Button>
+      </Group>
+    );
+  }
+  if (notice) {
+    return (
+      <Group className="live-bar is-notice" wrap="nowrap" gap="xs" data-no-swipe role="status">
+        <IconBroadcast size={16} aria-hidden style={{ flexShrink: 0, opacity: 0.7 }} />
+        <Text size="sm" c="dimmed" flex={1} lineClamp={2}>{notice}</Text>
       </Group>
     );
   }

@@ -264,8 +264,19 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
     ? () => navigate('song-edit', songEditFromSetlist(entry.song_id, 'setlist-play', setlistId, index))
     : undefined;
   const nav: PlaybackNav = { onPrev: userPrev, onNext: userNext, hasPrev: index > 0, hasNext: index < total - 1 };
+  // Say why live sync is not offered, instead of silently showing nothing.
+  const liveNotice = (() => {
+    if (live.leading || live.remote?.active || (canLead && live.status === 'connected')) return null;
+    if (setlist.isLocal) return 'Saved on this device only: live sync needs a setlist saved online as Public.';
+    if (setlist.visibility === 'private') return isOwner || isAdmin ? 'This setlist is Private: make it Public to use live sync.' : null;
+    if (!online) return 'Offline: live sync needs the network.';
+    if (live.status === 'unavailable') return "Live sync isn't available on this server (it may need updating).";
+    if (live.status === 'connecting') return 'Connecting to live sync\u2026';
+    if (live.status === 'connected') return user ? 'Live: waiting for the leader. Your screen will follow when they start.' : 'Live: waiting for the leader. Sign in as the setlist owner or an admin to lead.';
+    return null;
+  })();
   const liveBar = (
-    <LiveBar remote={live.remote} status={live.status} leading={live.leading} following={live.following} canLead={canLead} error={live.error}
+    <LiveBar remote={live.remote} status={live.status} leading={live.leading} following={live.following} canLead={canLead} error={live.error} notice={liveNotice}
       onStartLeading={() => void live.startLeading(index, songSections.sections.length ? songSections.active : -1)}
       onStopLeading={() => void live.stopLeading()}
       onPause={() => live.setFollowing(false)} onResync={() => live.setFollowing(true)} />
@@ -273,7 +284,7 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
   const sectionBar = showSections
     ? <SectionBar sections={songSections.sections} active={songSections.active} onJump={jumpToSection} />
     : null;
-  const hasLive = live.leading || !!live.remote?.active || (canLead && live.status === 'connected');
+  const hasLive = live.leading || !!live.remote?.active || (canLead && live.status === 'connected') || !!liveNotice;
   const more = (
     <PlaybackMoreMenu nashville={!!effNum} nashvilleDisabled={toolbar.nashvilleDisabled} onNashvilleChange={toggleEntryNum}
       onExportPdf={handleExportAllPdf} onReset={resetEntryLayout} canReset={canReset}
