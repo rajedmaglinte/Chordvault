@@ -1,0 +1,30 @@
+[Unit]
+Description=ChordVault chord sheet server
+After=network.target
+
+[Service]
+Type=simple
+User=chordvault
+Group=chordvault
+WorkingDirectory=/opt/chordvault/current
+EnvironmentFile=/etc/chordvault/chordvault.env
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=DB_PATH=/var/lib/chordvault/chordvault.db
+# Small heap and a hard cap so ChordVault can never crowd out other apps on a small server.
+Environment=NODE_OPTIONS=--max-old-space-size=128
+MemoryHigh=180M
+MemoryMax=256M
+ExecStart=/opt/chordvault/node/bin/node server.js
+Restart=on-failure
+RestartSec=3
+
+# Hardening: read-only system, writes only to its data folder.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/chordvault
+
+[Install]
+WantedBy=multi-user.target

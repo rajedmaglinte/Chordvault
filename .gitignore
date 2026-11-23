@@ -26,3 +26,4 @@ frontend/src/lib/test.html
 scripts/test-*.mjs
 scripts/test-*.png
 scratch/
+dist/

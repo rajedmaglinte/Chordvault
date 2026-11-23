@@ -1,0 +1,12 @@
+[Unit]
+Description=ChordVault daily database backup
+
+[Service]
+Type=oneshot
+User=chordvault
+Group=chordvault
+WorkingDirectory=/opt/chordvault/current
+Environment=DB_PATH=/var/lib/chordvault/chordvault.db
+Environment=BACKUP_DIR=/var/lib/chordvault/backups
+Environment=KEEP_DAYS=14
+ExecStart=/opt/chordvault/node/bin/node deploy/backup.js

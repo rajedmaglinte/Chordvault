@@ -1,0 +1,9 @@
+[Unit]
+Description=ChordVault daily database backup
+
+[Timer]
+OnCalendar=*-*-* 03:17
+Persistent=true
+
+[Install]
+WantedBy=timers.target

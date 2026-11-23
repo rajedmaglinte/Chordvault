@@ -31,7 +31,10 @@ const app = createApp((app) => {
 });
 
 const PORT = process.env.PORT || 3100;
-const server = app.listen(PORT, () => console.log(`ChordVault running on port ${PORT}`));
+// HOST=127.0.0.1 keeps ChordVault reachable only through a reverse proxy (nginx) on the same machine.
+// Leave it unset to listen on every address, e.g. a church PC serving phones on the LAN.
+const HOST = process.env.HOST || undefined;
+const server = app.listen(PORT, HOST, () => console.log(`ChordVault running on ${HOST || 'all addresses'}, port ${PORT}`));
 
 let shuttingDown = false;
 function gracefulShutdown(signal) {
