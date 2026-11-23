@@ -24,7 +24,7 @@ SITE_ENABLED="/etc/nginx/sites-enabled/${DOMAIN}"
 red() { printf '\033[31m%s\033[0m\n' "$*"; }
 green() { printf '\033[32m%s\033[0m\n' "$*"; }
 step() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
-fail() { red "STOPPED: $*"; red "Nothing after this point was changed."; exit 1; }
+fail() { red "STOPPED: $*"; exit 1; }
 
 [ -n "$DOMAIN" ] || fail "usage: sudo bash install.sh your.domain.name"
 [ "$(id -u)" -eq 0 ] || fail "run with sudo"
@@ -39,11 +39,18 @@ check() { if eval "$2"; then green "  ok   $1"; else red "  FAIL $1"; problems=$
 check "port ${PORT} is free" "! ss -tln | grep -qE '[:.]${PORT}\\b'"
 check "${APP} does not exist yet (use update.sh for updates)" "[ ! -e '${APP}' ]"
 check "no nginx site file named ${DOMAIN}" "[ ! -e '${SITE_AVAIL}' ] && [ ! -e '${SITE_ENABLED}' ]"
-check "no existing nginx site uses ${DOMAIN}" "! grep -rqsE 'server_name[^;]*[[:space:]]${DOMAIN//./\\.}([[:space:];]|$)' /etc/nginx/sites-enabled/ /etc/nginx/conf.d/"
+check "no existing nginx site uses ${DOMAIN}" "! grep -RqsE 'server_name[^;]*[[:space:]]${DOMAIN//./\\.}([[:space:];]|$)' /etc/nginx/sites-enabled/ /etc/nginx/conf.d/"
 check "current nginx config is valid (before any change)" "nginx -t >/dev/null 2>&1"
 check "at least 600 MB free disk" "[ \$(df --output=avail -m / | tail -1) -ge 600 ]"
 check "curl, tar, xz, openssl, sha256sum available" "command -v curl >/dev/null && command -v tar >/dev/null && command -v xz >/dev/null && command -v openssl >/dev/null && command -v sha256sum >/dev/null"
-[ "$problems" -eq 0 ] || fail "${problems} check(s) failed, see above"
+[ "$problems" -eq 0 ] || fail "${problems} check(s) failed, see above. Nothing was changed."
+
+EXISTING_DB=0
+if [ -f "$DATA/chordvault.db" ]; then
+  EXISTING_DB=1
+  red "  note ${DATA}/chordvault.db already exists (an earlier install?). It will be kept and reused,"
+  red "       with its existing accounts, so no new super admin is created."
+fi
 
 SERVER_IPS=$(hostname -I)
 DNS_IP=$(getent ahostsv4 "$DOMAIN" 2>/dev/null | awk 'NR==1{print $1}' || true)
@@ -61,21 +68,23 @@ This will:
   2. download Node.js 24 into ${APP}/node (checksum verified)
   3. download the ChordVault release from github.com/${REPO} (checksum verified) into ${APP}/releases/
   4. create ${DATA} (database + daily backups) and ${ETC}/chordvault.env (random secret)
-  5. create the super admin account (you choose the username and password now)
+  5. create the super admin account (you choose the username and password now; skipped if a database exists)
   6. install and start systemd services: chordvault, chordvault-backup.timer
   7. add nginx site ${SITE_AVAIL} for ${DOMAIN} -> 127.0.0.1:${PORT}, test, reload nginx
 It does not touch any other site, app, port, certificate or package.
 
 PLAN
 read -r -p "Type yes to continue: " answer
-[ "$answer" = yes ] || fail "cancelled"
+[ "$answer" = yes ] || fail "cancelled. Nothing was changed."
 
-read -r -p "Super admin username (3-50 characters): " ADMIN_USER
-[ ${#ADMIN_USER} -ge 3 ] && [ ${#ADMIN_USER} -le 50 ] || fail "username must be 3-50 characters"
-read -r -s -p "Super admin password (6+ characters): " ADMIN_PASS; echo
-read -r -s -p "Repeat password: " ADMIN_PASS2; echo
-[ "$ADMIN_PASS" = "$ADMIN_PASS2" ] || fail "passwords do not match"
-[ ${#ADMIN_PASS} -ge 6 ] || fail "password must be at least 6 characters"
+if [ "$EXISTING_DB" -eq 0 ]; then
+  read -r -p "Super admin username (3-50 characters): " ADMIN_USER
+  [ ${#ADMIN_USER} -ge 3 ] && [ ${#ADMIN_USER} -le 50 ] || fail "username must be 3-50 characters. Nothing was changed."
+  read -r -s -p "Super admin password (6+ characters): " ADMIN_PASS; echo
+  read -r -s -p "Repeat password: " ADMIN_PASS2; echo
+  [ "$ADMIN_PASS" = "$ADMIN_PASS2" ] || fail "passwords do not match. Nothing was changed."
+  [ ${#ADMIN_PASS} -ge 6 ] || fail "password must be at least 6 characters. Nothing was changed."
+fi
 
 # From here on, undo what we created if a step fails.
 created_site=0
@@ -117,7 +126,7 @@ VERSION=$(tar -xzOf "$tmp/release.tar.gz" chordvault/RELEASE 2>/dev/null || date
 REL="$APP/releases/$VERSION"
 mkdir -p "$REL"
 tar -xzf "$tmp/release.tar.gz" -C "$REL" --strip-components=1
-(cd "$REL" && npm ci --omit=dev --no-audit --no-fund --loglevel=error)
+(cd "$REL" && npm ci --omit=dev --no-audit --no-fund --loglevel=error > "$tmp/npm.log" 2>&1) || { cat "$tmp/npm.log"; fail "installing packages failed"; }
 ln -sfn "$REL" "$APP/current"
 chown -R root:root "$APP"
 rm -rf "$tmp"
@@ -144,15 +153,21 @@ systemctl enable --now chordvault-backup.timer >/dev/null
 green "  chordvault running on 127.0.0.1:${PORT} (not reachable from outside yet)"
 
 step "6/7 Super admin account"
+if [ "$EXISTING_DB" -eq 1 ]; then
+  green "  kept the existing database and its accounts"
+else
 # Created before nginx exposes the site, so nobody else can grab the first (super admin) account.
 body=$(ADMIN_USER="$ADMIN_USER" ADMIN_PASS="$ADMIN_PASS" node -e 'process.stdout.write(JSON.stringify({username: process.env.ADMIN_USER, password: process.env.ADMIN_PASS}))')
 reply=$(curl -s -w '\n%{http_code}' -H 'Content-Type: application/json' -d "$body" "http://127.0.0.1:${PORT}/api/auth/register")
 [ "$(tail -1 <<<"$reply")" = 200 ] || fail "could not create super admin: $(head -1 <<<"$reply")"
 unset ADMIN_PASS ADMIN_PASS2 body
 green "  super admin '${ADMIN_USER}' created"
+fi
 
 step "7/7 nginx site for ${DOMAIN}"
 sed -e "s/__DOMAIN__/${DOMAIN}/g" -e "s/__PORT__/${PORT}/g" "$REL/deploy/nginx-site.conf" > "$SITE_AVAIL"
+# Servers without IPv6 cannot listen on [::]; drop that line there.
+[ -s /proc/net/if_inet6 ] || sed -i '/listen \[::\]/d' "$SITE_AVAIL"
 ln -s "$SITE_AVAIL" "$SITE_ENABLED"
 created_site=1
 if ! nginx -t >/dev/null 2>&1; then nginx -t || true; fail "nginx rejected the new site"; fi
@@ -167,7 +182,7 @@ $(green "ChordVault is installed.")
 Next: turn on HTTPS (needs ${DOMAIN} pointing to this server):
   sudo certbot --nginx -d ${DOMAIN}
 
-Then open https://${DOMAIN} and sign in as '${ADMIN_USER}'.
+Then open https://${DOMAIN} and sign in${ADMIN_USER:+ as '${ADMIN_USER}'}.
 
 Useful commands:
   systemctl status chordvault          is it running?

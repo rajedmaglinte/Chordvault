@@ -30,7 +30,7 @@ if [ "$REL" = "$PREVIOUS" ]; then green "Already on ${VERSION}."; exit 0; fi
 echo "Updating $(basename "$PREVIOUS") -> ${VERSION}"
 rm -rf "$REL"; mkdir -p "$REL"
 tar -xzf "$tmp/release.tar.gz" -C "$REL" --strip-components=1
-(cd "$REL" && npm ci --omit=dev --no-audit --no-fund --loglevel=error)
+(cd "$REL" && npm ci --omit=dev --no-audit --no-fund --loglevel=error > "$tmp/npm.log" 2>&1) || { cat "$tmp/npm.log"; red "installing packages failed; nothing switched"; rm -rf "$REL"; exit 1; }
 chown -R root:root "$REL"
 
 echo "Backing up the database first..."
