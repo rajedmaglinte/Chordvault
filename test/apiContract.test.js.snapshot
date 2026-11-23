@@ -3841,14 +3841,6 @@ exports[`API responses match the recorded contract 1`] = `
       ],
       "recentSongs": [
         {
-          "id": 7,
-          "title": "Grace",
-          "artist": "Writer",
-          "visibility": "public",
-          "created_at": "<time>",
-          "username": "bob"
-        },
-        {
           "id": 6,
           "title": "恩典",
           "artist": "Writer",
@@ -3879,6 +3871,14 @@ exports[`API responses match the recorded contract 1`] = `
           "visibility": "public",
           "created_at": "<time>",
           "username": "bob"
+        },
+        {
+          "id": 2,
+          "title": "Secret",
+          "artist": "Writer",
+          "visibility": "private",
+          "created_at": "<time>",
+          "username": "alice"
         }
       ]
     }
@@ -3933,14 +3933,6 @@ exports[`API responses match the recorded contract 1`] = `
       ],
       "recentSongs": [
         {
-          "id": 7,
-          "title": "Grace",
-          "artist": "Writer",
-          "visibility": "public",
-          "created_at": "<time>",
-          "username": "bob"
-        },
-        {
           "id": 6,
           "title": "恩典",
           "artist": "Writer",
@@ -3971,6 +3963,14 @@ exports[`API responses match the recorded contract 1`] = `
           "visibility": "public",
           "created_at": "<time>",
           "username": "bob"
+        },
+        {
+          "id": 2,
+          "title": "Secret",
+          "artist": "Writer",
+          "visibility": "private",
+          "created_at": "<time>",
+          "username": "alice"
         }
       ]
     }
@@ -6891,6 +6891,13 @@ exports[`API responses match the recorded contract 3`] = `
   },
   {
     "call": "DELETE /api/admin/users/5 as admin",
+    "status": 403,
+    "body": {
+      "error": "Only the super admin can do this"
+    }
+  },
+  {
+    "call": "DELETE /api/admin/users/5 as owner",
     "status": 200,
     "body": {
       "success": true
@@ -7335,7 +7342,8 @@ exports[`API responses match the recorded contract 5`] = `
     "call": "DELETE /api/admin/songs/5 as admin",
     "status": 200,
     "body": {
-      "success": true
+      "success": true,
+      "result": "deactivated"
     }
   },
   {
@@ -7804,7 +7812,7 @@ exports[`API responses match the recorded contract 5`] = `
         "event_date": null,
         "created_at": "<time>",
         "updated_at": "<time>",
-        "song_count": 2
+        "song_count": 3
       }
     ]
   },
@@ -7858,7 +7866,7 @@ exports[`API responses match the recorded contract 5`] = `
         "created_at": "<time>",
         "updated_at": "<time>",
         "username": "alice",
-        "song_count": 2
+        "song_count": 3
       }
     ]
   },
@@ -7886,7 +7894,7 @@ exports[`API responses match the recorded contract 5`] = `
         "created_at": "<time>",
         "updated_at": "<time>",
         "username": "alice",
-        "song_count": 2
+        "song_count": 3
       }
     ]
   },
@@ -7914,7 +7922,7 @@ exports[`API responses match the recorded contract 5`] = `
         "created_at": "<time>",
         "updated_at": "<time>",
         "username": "alice",
-        "song_count": 2
+        "song_count": 3
       }
     ]
   },
@@ -7942,7 +7950,7 @@ exports[`API responses match the recorded contract 5`] = `
         "created_at": "<time>",
         "updated_at": "<time>",
         "username": "alice",
-        "song_count": 2
+        "song_count": 3
       }
     ]
   },
@@ -7970,7 +7978,7 @@ exports[`API responses match the recorded contract 5`] = `
         "created_at": "<time>",
         "updated_at": "<time>",
         "username": "alice",
-        "song_count": 2
+        "song_count": 3
       }
     ]
   },
@@ -8010,6 +8018,25 @@ exports[`API responses match the recorded contract 5`] = `
           "language": "",
           "visibility": "public",
           "username": "bob"
+        },
+        {
+          "entry_id": 2,
+          "song_id": 5,
+          "position": 2,
+          "target_key": null,
+          "nashville": 0,
+          "content_override": null,
+          "title": "[Deactivated Song]",
+          "artist": "",
+          "content": "",
+          "key": "",
+          "youtube_url": null,
+          "bpm": null,
+          "tags": null,
+          "language": "",
+          "username": "",
+          "is_private_placeholder": true,
+          "is_deactivated": true
         },
         {
           "entry_id": 1,
@@ -8659,7 +8686,7 @@ exports[`API responses match the recorded contract 5`] = `
     "status": 200,
     "body": {
       "userCount": 4,
-      "songCount": 10,
+      "songCount": 11,
       "pendingCount": 0,
       "noFormatCount": 8,
       "languageDistribution": [
@@ -8751,7 +8778,7 @@ exports[`API responses match the recorded contract 5`] = `
     "status": 200,
     "body": {
       "userCount": 4,
-      "songCount": 10,
+      "songCount": 11,
       "pendingCount": 0,
       "noFormatCount": 8,
       "languageDistribution": [
@@ -8893,7 +8920,7 @@ exports[`API responses match the recorded contract 5`] = `
         "role": "user",
         "disabled": 0,
         "created_at": "<time>",
-        "song_count": 3
+        "song_count": 4
       }
     ]
   },
@@ -8931,7 +8958,7 @@ exports[`API responses match the recorded contract 5`] = `
         "role": "user",
         "disabled": 0,
         "created_at": "<time>",
-        "song_count": 3
+        "song_count": 4
       }
     ]
   },
@@ -9479,6 +9506,24 @@ exports[`API responses match the recorded contract 5`] = `
               "username": "bob"
             },
             {
+              "entry_id": 2,
+              "song_id": 5,
+              "position": 2,
+              "target_key": null,
+              "nashville": 0,
+              "content_override": null,
+              "title": "[Private Song]",
+              "artist": "",
+              "content": "",
+              "key": "",
+              "youtube_url": null,
+              "bpm": null,
+              "tags": null,
+              "language": "",
+              "username": "",
+              "is_private_placeholder": true
+            },
+            {
               "entry_id": 1,
               "song_id": 1,
               "position": 3,
@@ -9497,7 +9542,7 @@ exports[`API responses match the recorded contract 5`] = `
               "username": "alice"
             }
           ],
-          "song_count": 2,
+          "song_count": 3,
           "username": "alice",
           "search": [
             "sunday am"
@@ -10028,7 +10073,7 @@ exports[`API responses match the recorded contract 5`] = `
           "key": "",
           "content": "{title: Admin copy}\\n[E]x",
           "visibility": "private",
-          "parent_id": null,
+          "parent_id": 5,
           "youtube_url": null,
           "format_detected": null,
           "bpm": null,
@@ -10038,7 +10083,7 @@ exports[`API responses match the recorded contract 5`] = `
           "created_at": "<time>",
           "updated_at": "<time>",
           "username": "admin",
-          "familyId": 11
+          "familyId": 5
         },
         {
           "id": 13,
@@ -10255,7 +10300,7 @@ exports[`API responses match the recorded contract 5`] = `
           "artist": "",
           "key": "",
           "visibility": "private",
-          "parent_id": null,
+          "parent_id": 5,
           "youtube_url": null,
           "format_detected": null,
           "bpm": null,
@@ -10265,7 +10310,7 @@ exports[`API responses match the recorded contract 5`] = `
           "created_at": "<time>",
           "updated_at": "<time>",
           "username": "admin",
-          "familyId": 11,
+          "familyId": 5,
           "search": {
             "title": [
               "admin copy"

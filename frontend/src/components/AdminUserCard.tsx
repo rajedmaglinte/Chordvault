@@ -3,7 +3,7 @@ import { CardTitle } from './CardTitle';
 import { CardMeta } from './CardMeta';
 import { useDemo } from '../context/DemoContext';
 import { useI18n } from '../context/I18nContext';
-import { ROLES, manageUserError } from '../lib/constants';
+import { ROLES, ROLE_LABELS, isSuperAdmin, manageUserError } from '../lib/constants';
 import { formatDbDate, formatSongCount } from '../lib/format';
 import type { AdminUser, User } from '../types';
 
@@ -31,9 +31,8 @@ export function AdminUserCard({ target, actor, busy, onSetRole, onResetPassword,
           <CardMeta>{formatSongCount(target.song_count, t)} &middot; {t('admin.joined')} {formatDbDate(target.created_at)}</CardMeta>
         </Box>
         <Group gap={6}>
-          {target.role === ROLES.OWNER && <Badge>owner</Badge>}
-          {isTargetAdmin && <Badge>admin</Badge>}
-          {target.disabled && <Badge color="red">disabled</Badge>}
+          {target.role !== ROLES.USER && <Badge>{ROLE_LABELS[target.role]}</Badge>}
+          {target.disabled && <Badge color="red">Blocked</Badge>}
         </Group>
       </Group>
       {showActions && (
@@ -44,8 +43,8 @@ export function AdminUserCard({ target, actor, busy, onSetRole, onResetPassword,
             </Button>
           )}
           <Button variant="default" size="xs" disabled={busy} onClick={() => onResetPassword(target.id, target.username)}>{t('admin.resetPassword')}</Button>
-          <Button variant="default" size="xs" disabled={busy} onClick={() => onSetDisabled(target.id, !target.disabled)}>{target.disabled ? t('admin.enable') : t('admin.disable')}</Button>
-          <Button color="red" size="xs" disabled={busy} onClick={() => onDelete(target.id, target.username)}>{t('admin.delete')}</Button>
+          <Button variant={target.disabled ? 'filled' : 'default'} color={target.disabled ? undefined : 'orange'} size="xs" disabled={busy} onClick={() => onSetDisabled(target.id, !target.disabled)}>{target.disabled ? t('admin.enable') : t('admin.disable')}</Button>
+          {isSuperAdmin(actor.role) && <Button color="red" size="xs" disabled={busy} onClick={() => onDelete(target.id, target.username)}>{t('admin.deleteForever')}</Button>}
         </Group></Stack>
       )}
     </Paper>

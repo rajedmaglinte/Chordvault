@@ -5,6 +5,7 @@ import { IconCamera, IconLock } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../context/AuthContext';
+import { isSuperAdmin } from '../lib/constants';
 import { useI18n } from '../context/I18nContext';
 import { showStatusNotification as toast } from '../lib/notifications';
 import { confirmAction, notifyError } from '../lib/errors';
@@ -103,11 +104,13 @@ export function SongEditView({ songId, returnTo, navigate }: SongEditViewProps) 
     } catch (e) { notifyError(e); }
   };
 
+  // Only the super admin deletes for good; for everyone else the server deactivates the song.
+  const superAdmin = isSuperAdmin(user?.role);
   const deleteSong = () => {
     if (!song) return;
-    confirmAction(t('songEdit.confirmDelete'), async () => {
-      await apiCall('DELETE', `/api/songs/${song.id}`);
-      toast(t('songEdit.deleted'));
+    confirmAction(superAdmin ? t('songEdit.confirmDelete') : t('songEdit.confirmDeactivate'), async () => {
+      const res = await apiCall<{ result?: string }>('DELETE', `/api/songs/${song.id}`);
+      toast(res.result === 'deleted' ? t('songEdit.deleted') : t('songEdit.deactivated'));
       leave('my-songs');
     });
   };
@@ -143,6 +146,7 @@ export function SongEditView({ songId, returnTo, navigate }: SongEditViewProps) 
         onSave={isOwner ? save : saveAsVersion}
         onSaveAsVersion={isOwner && songId ? saveAsVersion : undefined}
         onDelete={song && isOwner ? deleteSong : undefined}
+        deleteLabel={superAdmin ? t('songEdit.deleteSong') : t('songEdit.deactivateSong')}
       />
       <Stack gap="sm">
         <SimpleGrid cols={{ base: 1, xs: 2 }} spacing="sm">

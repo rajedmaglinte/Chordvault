@@ -12,9 +12,11 @@ interface EditorActionBarProps {
   onSave: () => void;
   onSaveAsVersion?: () => void;
   onDelete?: () => void;
+  /** Menu text for onDelete; defaults to "Delete song". */
+  deleteLabel?: string;
 }
 
-export function EditorActionBar({ title, dirty, onLeave, saveLabel, onSave, onSaveAsVersion, onDelete }: EditorActionBarProps) {
+export function EditorActionBar({ title, dirty, onLeave, saveLabel, onSave, onSaveAsVersion, onDelete, deleteLabel }: EditorActionBarProps) {
   const { t } = useI18n();
   const { readOnly } = useOffline();
   const hasMenu = !!(onSaveAsVersion || onDelete);
@@ -42,7 +44,7 @@ export function EditorActionBar({ title, dirty, onLeave, saveLabel, onSave, onSa
             <Menu.Dropdown>
               {onSaveAsVersion && <Menu.Item onClick={onSaveAsVersion}>{t('songEdit.saveAsNewVersion')}</Menu.Item>}
               {onSaveAsVersion && onDelete && <Menu.Divider />}
-              {onDelete && <Menu.Item color="red" leftSection={<IconTrash size={16} aria-hidden />} onClick={onDelete}>{t('songEdit.deleteSong')}</Menu.Item>}
+              {onDelete && <Menu.Item color="red" leftSection={<IconTrash size={16} aria-hidden />} onClick={onDelete}>{deleteLabel ?? t('songEdit.deleteSong')}</Menu.Item>}
             </Menu.Dropdown>
           </Menu>
         )}

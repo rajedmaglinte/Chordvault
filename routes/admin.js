@@ -8,7 +8,9 @@ const { requireAuth, requireAdmin, createAccount, setPassword } = require('../li
 const { validateObjectBody, requireId, assertValid, validateUserCredentials, validatePassword, validateBoolean, validateTagList } = require('../lib/validation');
 const { AppError, requireFound, requireChanged } = require('../lib/errors');
 const { ROLES, SETTING_KEYS } = require('../lib/constants');
-const { manageUserError } = require('../shared/access.mjs');
+const { manageUserError, isSuperAdmin } = require('../shared/access.mjs');
+const Activity = require('../lib/models/activity');
+const { removeSong, setSongActive } = require('../lib/songRemoval');
 const Tags = require('../lib/models/tags');
 const { blockInDemo } = require('../lib/demo');
 
@@ -19,6 +21,14 @@ function resolveAdminTarget(req) {
   if (refusal) throw new AppError(refusal, 403);
   return { targetId, target };
 }
+
+function requireSuperAdmin(req, _res, next) {
+  if (!isSuperAdmin(req.user.role)) throw new AppError('Only the super admin can do this', 403);
+  next();
+}
+
+const findSongForAdmin = raw => requireFound(Song.findById(requireId(raw, 'Invalid song ID')), 'Song not found');
+const userTarget = target => ({ type: 'user', id: target.id, name: target.username });
 
 function createAdminRouter() {
   const router = express.Router();
@@ -49,13 +59,16 @@ function createAdminRouter() {
     if (role !== ROLES.USER && role !== ROLES.ADMIN) throw new AppError('Role must be "user" or "admin"', 400);
 
     User.updateRole(resolved.targetId, role);
+    Activity.log(req.user, Activity.ACTIONS.USER_ROLE, { ...userTarget(resolved.target), details: { from: resolved.target.role, to: role } });
     res.json({ success: true });
   });
 
   router.put('/admin/users/:id/disabled', blockInDemo, (req, res) => {
     const { disabled } = req.body;
     assertValid(validateBoolean(disabled, 'disabled'));
-    User.updateDisabled(resolveAdminTarget(req).targetId, disabled);
+    const { targetId, target } = resolveAdminTarget(req);
+    User.updateDisabled(targetId, disabled);
+    Activity.log(req.user, disabled ? Activity.ACTIONS.USER_BLOCKED : Activity.ACTIONS.USER_UNBLOCKED, userTarget(target));
     res.json({ success: true });
   });
 
@@ -72,17 +85,44 @@ function createAdminRouter() {
     const { username, password } = req.body;
     assertValid(validateUserCredentials(username, password));
     const { id, username: name } = await createAccount(username, password, (trimmed, hash) => User.create(trimmed, hash, ROLES.USER));
+    Activity.log(req.user, Activity.ACTIONS.USER_ADDED, { type: 'user', id, name });
     res.json({ id, username: name });
   });
 
+  // Admins block users; only the super admin deletes them (with all their songs and setlists).
   router.delete('/admin/users/:id', blockInDemo, (req, res) => {
-    User.delete(resolveAdminTarget(req).targetId);
+    const { targetId, target } = resolveAdminTarget(req);
+    requireSuperAdmin(req, res, () => {});
+    const songCount = User.listWithSongCount().find(u => u.id === targetId)?.song_count ?? 0;
+    User.delete(targetId);
+    Activity.log(req.user, Activity.ACTIONS.USER_DELETED, { ...userTarget(target), details: { songs: songCount } });
     res.json({ success: true });
   });
 
+  // Admins deactivate; the super admin deletes for good.
   router.delete('/admin/songs/:id', (req, res) => {
-    requireChanged(Song.delete(requireId(req.params.id, 'Invalid song ID')), 'Song not found');
+    res.json({ success: true, result: removeSong(req.user, findSongForAdmin(req.params.id)) });
+  });
+
+  router.get('/admin/songs/inactive', (_req, res) => res.json(Song.listInactive()));
+
+  router.put('/admin/songs/:id/active', (req, res) => {
+    const { active } = req.body;
+    assertValid(validateBoolean(active, 'active'));
+    setSongActive(req.user, findSongForAdmin(req.params.id), active);
     res.json({ success: true });
+  });
+
+  router.get('/admin/history', (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
+    const type = ['song', 'user'].includes(req.query.type) ? req.query.type : null;
+    const q = typeof req.query.q === 'string' ? req.query.q.slice(0, 100) : '';
+    res.json(Activity.list({ type, q, page, limit }));
+  });
+
+  router.get('/admin/history/:id', (req, res) => {
+    res.json(requireFound(Activity.get(requireId(req.params.id, 'Invalid history ID')), 'History entry not found'));
   });
 
   router.post('/admin/invites', blockInDemo, (req, res) => {

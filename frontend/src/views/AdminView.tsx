@@ -17,9 +17,11 @@ import { PageTitle } from '../components/PageTitle';
 import { AdminTags } from '../components/AdminTags';
 import { AdminInvites } from '../components/AdminInvites';
 import { AdminUserCard } from '../components/AdminUserCard';
+import { AdminInactiveSongs } from '../components/AdminInactiveSongs';
+import { AdminHistory } from '../components/AdminHistory';
 import { StatCard } from '../components/StatCard';
 import { StatGrid } from '../components/StatGrid';
-import { ROLES } from '../lib/constants';
+import { ROLES, ROLE_LABELS } from '../lib/constants';
 import { formatDbDate } from '../lib/format';
 import type { Navigate } from '../lib/routes';
 
@@ -35,6 +37,7 @@ export function AdminView({ navigate }: AdminViewProps) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [corrections, setCorrections] = useState<Correction[]>([]);
   const { busy, run: runAction } = useBusyAction();
+  const [reloads, setReloads] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -43,7 +46,7 @@ export function AdminView({ navigate }: AdminViewProps) {
         apiCall<AdminUser[]>('GET', '/api/admin/users'),
         apiCall<Correction[]>('GET', '/api/admin/corrections'),
       ]);
-      setStats(s); setUsers(u); setCorrections(c);
+      setStats(s); setUsers(u); setCorrections(c); setReloads(n => n + 1);
     } catch (e) { notifyError(e); navigate('my-songs', {}, { leave: true }); }
   }, [apiCall, navigate]);
 
@@ -71,8 +74,9 @@ export function AdminView({ navigate }: AdminViewProps) {
   const deleteUser = (userId: number, username: string) => confirmThenReload(tReplace('admin.confirmDeleteUser', { username }),
     () => apiCall('DELETE', `/api/admin/users/${userId}`), t('admin.userDeleted'));
 
-  const deleteSong = (songId: number, title: string) => confirmThenReload(tReplace('admin.confirmDeleteSong', { title }),
-    () => apiCall('DELETE', `/api/admin/songs/${songId}`), t('admin.songDeleted'));
+  // Admins deactivate; the super admin can delete for good from the Deactivated songs list.
+  const deactivateSong = (songId: number, title: string) => confirmThenReload(tReplace('admin.confirmDeactivateSong', { title }),
+    () => apiCall('PUT', `/api/admin/songs/${songId}/active`, { active: false }), t('admin.songDeactivated'));
 
   const resetPassword = (userId: number, username: string) => modals.openContextModal({ modal: 'resetPassword', title: tReplace('admin.resetPasswordPrompt', { username }), innerProps: { onSubmit: (newPassword: string) => runAction(async () => {
     await apiCall('PUT', `/api/admin/users/${userId}/password`, { password: newPassword });
@@ -83,7 +87,10 @@ export function AdminView({ navigate }: AdminViewProps) {
 
   return (
     <>
-      <Group justify="space-between" mb="lg"><PageTitle className="view-title">{t('admin.title')}</PageTitle></Group>
+      <Group justify="space-between" mb="lg">
+        <PageTitle className="view-title">{t('admin.title')}</PageTitle>
+        {user && <Badge size="lg" variant="light">{ROLE_LABELS[user.role]}</Badge>}
+      </Group>
       <StatGrid>
         <StatCard value={stats.userCount} label={t('admin.users')} />
         <StatCard value={stats.songCount} label={t('admin.songs')} />
@@ -125,12 +132,14 @@ export function AdminView({ navigate }: AdminViewProps) {
                 title={s.title}
                 meta={<>{s.artist ? `${s.artist} · ` : ''}@{s.username} &middot; {formatDbDate(s.created_at)}</>}
                 onClick={() => navigate('song-view', { id: String(s.id) })}
-                actions={<Button color="red" size="xs" disabled={busy} onClick={(e) => { e.stopPropagation(); deleteSong(s.id, s.title); }}>{t('admin.delete')}</Button>}
+                actions={<Button color="orange" variant="light" size="xs" disabled={busy} onClick={(e) => { e.stopPropagation(); deactivateSong(s.id, s.title); }}>{t('admin.deactivate')}</Button>}
               />
             ))}
           </CardGrid>
         </>
       )}
+
+      <AdminInactiveSongs refreshKey={reloads} onChanged={() => void load()} onOpen={(id) => navigate('song-view', { id: String(id) })} />
 
       {corrections.length > 0 && (
         <>
@@ -148,6 +157,8 @@ export function AdminView({ navigate }: AdminViewProps) {
           </CardGrid>
         </>
       )}
+
+      <Box mt={28}><AdminHistory refreshKey={reloads} /></Box>
     </>
   );
 }

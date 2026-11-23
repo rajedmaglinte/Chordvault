@@ -3,13 +3,15 @@ const yazl = require('yazl');
 const { requireAuth, requireAdmin, optionalAuth, isAdminRole, canManageSong, viewerId } = require('../lib/auth');
 const { STATUS, LIMITS } = require('../lib/constants');
 const { validateListQuery, validateObjectBody, requireId, assertValid, validateSongInput, validateVisibility, validateSongMetadata, parsePaginationParams, songListOptions } = require('../lib/validation');
-const { AppError, requireFound, requireChanged } = require('../lib/errors');
+const { AppError, requireFound } = require('../lib/errors');
 const { DEMO_MODE } = require('../lib/demo');
 const { makeUniqueNamer } = require('../lib/exportFilename');
 const Song = require('../lib/models/song');
 const User = require('../lib/models/user');
 const Tags = require('../lib/models/tags');
 const { canViewSongVisibility, familyRootId } = require('../lib/songAccess');
+const Activity = require('../lib/models/activity');
+const { removeSong } = require('../lib/songRemoval');
 const { splitTags } = require('../shared/tags.mjs');
 const { normalizeVisibility } = require('../shared/access.mjs');
 const { extractDirective, parseBpm } = require('../shared/chordpro.mjs');
@@ -61,6 +63,13 @@ function resolveCorrectionWithAuth(req) {
   return { correction, original, originalId };
 }
 
+const TRACKED_FIELDS = ['title', 'artist', 'key', 'content', 'visibility', 'youtube_url', 'bpm', 'tags', 'language'];
+
+/** Which fields an edit changed, for the history log. */
+function changedFields(before, after) {
+  return TRACKED_FIELDS.filter(f => String(before[f] ?? '') !== String(after[f] ?? ''));
+}
+
 function createSongsRouter() {
   const router = express.Router();
   router.use(validateObjectBody);
@@ -106,6 +115,7 @@ function createSongsRouter() {
       const isOriginalOwner = req.user && song.parent_id && Song.findById(song.parent_id)?.user_id === req.user.id;
       if (!canManageSong(req.user, song.user_id) && !isOriginalOwner) throw new AppError('Song not found', 404);
     }
+    if (song.status === STATUS.INACTIVE && !isAdminRole(req.user?.role)) throw new AppError('Song not found', 404);
     if (!canViewSongVisibility(req.user, song)) throw new AppError('Song not found', 404);
     // Include version_count for single song view
     const versionCount = Song.getVersionCount(song.parent_id, song.id, viewerId(req));
@@ -120,6 +130,7 @@ function createSongsRouter() {
     const fmt = format_detected?.trim() || null;
     const finalVisibility = normalizeVisibility(visibility);
     const result = Song.create(req.user.id, meta, content, finalVisibility, fmt);
+    Activity.log(req.user, Activity.ACTIONS.SONG_ADDED, { type: 'song', id: Number(result.lastInsertRowid), name: meta.title });
     res.json({ id: result.lastInsertRowid });
   });
 
@@ -152,6 +163,7 @@ function createSongsRouter() {
       console.error('Import failed:', e.message);
       throw new AppError('Import failed. Please check your data and try again.', 500);
     }
+    if (result.imported) Activity.log(req.user, Activity.ACTIONS.SONG_IMPORTED, { type: 'song', name: `${result.imported} songs`, details: { count: result.imported } });
     res.json({ imported: result.imported, skipped: result.skipped, errors });
   });
 
@@ -159,6 +171,7 @@ function createSongsRouter() {
     const id = requireId(req.params.id, 'Invalid song ID');
     const existing = Song.findById(id);
     if (!existing || !canManageSong(req.user, existing.user_id)) throw new AppError('Song not found or not yours', 404);
+    if (existing.status === STATUS.INACTIVE) throw new AppError('This song is deactivated. Reactivate it before editing.', 409);
     const { format_detected, visibility } = req.body;
     const { meta, content: finalContent } = requireSongSave(req.body, { fallbackContent: existing.content });
     assertValid(validateVisibility(visibility));
@@ -166,13 +179,18 @@ function createSongsRouter() {
     const fmt = format_detected !== undefined ? (format_detected?.trim() || null) : existing.format_detected;
     const finalVisibility = visibility !== undefined ? normalizeVisibility(visibility) : existing.visibility;
     Song.update(id, meta, finalContent, finalVisibility, fmt);
+    const fields = changedFields(existing, { ...meta, content: finalContent.trim(), visibility: finalVisibility });
+    if (fields.length) {
+      Activity.log(req.user, Activity.ACTIONS.SONG_MODIFIED, { type: 'song', id, name: meta.title,
+        details: { fields, ...(meta.title !== existing.title ? { previousTitle: existing.title } : {}) }, snapshot: existing.content });
+    }
     res.json({ success: true });
   });
 
   router.delete('/songs/:id', requireAuth, (req, res) => {
-    const id = requireId(req.params.id, 'Invalid song ID');
-    requireChanged(Song.delete(id, isAdminRole(req.user.role) ? null : req.user.id), 'Song not found or not yours');
-    res.json({ success: true });
+    const song = requireFound(Song.findById(requireId(req.params.id, 'Invalid song ID')), 'Song not found or not yours');
+    const result = removeSong(req.user, song);
+    res.json({ success: true, result });
   });
 
   router.post('/songs/:id/version', requireAuth, (req, res) => {
@@ -185,6 +203,7 @@ function createSongsRouter() {
     const { meta } = requireSongSave({ content });
     const parentId = familyRootId(original);
     const result = Song.createVersion(req.user.id, parentId, meta, content, original.visibility);
+    Activity.log(req.user, Activity.ACTIONS.SONG_ADDED, { type: 'song', id: Number(result.lastInsertRowid), name: meta.title, details: { versionOf: original.title } });
     res.json({ id: result.lastInsertRowid });
   });
 
@@ -197,6 +216,7 @@ function createSongsRouter() {
   router.post('/songs/:id/correction', requireAuth, (req, res) => {
     const original = findSong(req.params.id);
     if (original.status === STATUS.PENDING) throw new AppError('Cannot correct a pending correction', 400);
+    if (original.status === STATUS.INACTIVE) throw new AppError('Song not found', 404);
     if (!canViewSongVisibility(req.user, original)) throw new AppError('Cannot submit corrections on private songs', 403);
     const { content } = req.body;
     const { meta } = requireSongSave({ content });
@@ -212,8 +232,10 @@ function createSongsRouter() {
   });
 
   router.put('/corrections/:id/approve', requireAuth, (req, res) => {
-    const { correction, originalId } = resolveCorrectionWithAuth(req);
+    const { correction, original, originalId } = resolveCorrectionWithAuth(req);
     Song.approveCorrection(correction.id, originalId, correction.content);
+    Activity.log(req.user, Activity.ACTIONS.SONG_MODIFIED, { type: 'song', id: originalId, name: original.title,
+      details: { fields: ['content'], correctionBy: correction.username }, snapshot: original.content });
     res.json({ success: true });
   });
 

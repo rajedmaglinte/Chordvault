@@ -296,7 +296,7 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
         <>
           {entry?.is_private_placeholder ? (
             <Box mt={40}>
-              <EmptyState icon={<IconLock size={56} aria-hidden />} text={entry.not_downloaded ? "This song is not downloaded. Connect and refresh your library." : <>This song is private<Text span display="block" size="sm" mt="xs">The song owner has marked it as private.</Text></>} />
+              <EmptyState icon={<IconLock size={56} aria-hidden />} text={entry.is_deactivated ? <>This song was deactivated<Text span display="block" size="sm" mt="xs">An admin can reactivate it from the Admin page.</Text></> : entry.not_downloaded ? "This song is not downloaded. Connect and refresh your library." : <>This song is private<Text span display="block" size="sm" mt="xs">The song owner has marked it as private.</Text></>} />
             </Box>
           ) : (
             <ChordSheet

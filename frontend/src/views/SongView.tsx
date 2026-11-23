@@ -26,7 +26,7 @@ import { LanguageBadge } from '../components/LanguageBadge';
 import type { Song, SongVersion, Correction } from '../types';
 import { TagBadges } from '../components/TagBadges';
 import { PageTitle } from '../components/PageTitle';
-import { VISIBILITY } from '../lib/constants';
+import { VISIBILITY, STATUS } from '../lib/constants';
 import { formatDbDate, versionLabel } from '../lib/format';
 import { errorMessage, confirmAction } from '../lib/errors';
 import { usePdfExport } from '../hooks/usePdfExport';
@@ -41,7 +41,7 @@ export function SongView({ songId, navigate }: SongViewProps) {
   const apiCall = useApi();
   const { getSong, getVersions } = useLibraryRead();
   const { readOnly } = useOffline();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { t, tReplace } = useI18n();
   const [loadError, setLoadError] = useState('');
   const [song, setSong] = useState<Song | null>(null);
@@ -115,6 +115,13 @@ export function SongView({ songId, navigate }: SongViewProps) {
 
 
 
+  const reactivate = () => confirmAction('Reactivate this song? Everyone will be able to see it again.', async () => {
+    await apiCall('PUT', `/api/admin/songs/${songId}/active`, { active: true });
+    toast(t('admin.songReactivated'), 'success');
+    setSong(null);
+    setSong(await getSong(songId));
+  });
+
   const approveCorrection = (id: number) => confirmAction('Apply this correction? The original song content will be updated.', async () => {
     await apiCall('PUT', `/api/corrections/${id}/approve`);
     toast('Correction approved', 'success');
@@ -133,6 +140,12 @@ export function SongView({ songId, navigate }: SongViewProps) {
 
   return (
     <div lang={song.language || undefined} className={showSections ? 'song-view has-sections' : 'song-view'}>
+      {song.status === STATUS.INACTIVE && (
+        <Alert color="orange" title="This song is deactivated" mb="md">
+          It is hidden from everyone except admins.
+          {isAdmin && <Button size="xs" mt="sm" display="block" disabled={readOnly} onClick={reactivate}>{t('admin.reactivate')}</Button>}
+        </Alert>
+      )}
       <Box mb="lg">
         <Group justify="space-between" mb="md">
           <BackButton onClick={() => navigate(user ? 'my-songs' : 'browse', {}, { leave: true })}>{t('songView.back')}</BackButton>

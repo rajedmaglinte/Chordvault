@@ -7,7 +7,7 @@ test('the server constants are the shared ones', () => {
   assert.equal(constants.ROLES, ROLES);
   assert.equal(constants.STATUS, STATUS);
   assert.equal(constants.VISIBILITY, VISIBILITY);
-  assert.deepEqual({ ...ROLES, ...STATUS, ...VISIBILITY }, { OWNER: 'owner', ADMIN: 'admin', USER: 'user', ACTIVE: 'active', PENDING: 'pending', PUBLIC: 'public', PRIVATE: 'private' });
+  assert.deepEqual({ ...ROLES, ...STATUS, ...VISIBILITY }, { OWNER: 'owner', ADMIN: 'admin', USER: 'user', ACTIVE: 'active', PENDING: 'pending', INACTIVE: 'inactive', PUBLIC: 'public', PRIVATE: 'private' });
 });
 
 test('isAdminRole accepts owner and admin only', () => {

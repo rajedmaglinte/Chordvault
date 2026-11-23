@@ -22,6 +22,35 @@ export interface AdminUser {
   created_at: string;
 }
 
+export interface InactiveSong {
+  id: number;
+  title: string;
+  artist: string;
+  username: string;
+  updated_at: string;
+  deactivated_by: string | null;
+}
+
+export interface HistoryEntry {
+  id: number;
+  created_at: string;
+  actor_name: string;
+  action: string;
+  target_type: 'song' | 'user';
+  target_id: number | null;
+  target_name: string;
+  details: Record<string, unknown> | null;
+  has_snapshot: boolean;
+  snapshot?: string | null;
+}
+
+export interface HistoryPage {
+  entries: HistoryEntry[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface InviteCode {
   id: number;
   code: string;

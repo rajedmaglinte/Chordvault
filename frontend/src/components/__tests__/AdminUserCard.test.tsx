@@ -23,8 +23,15 @@ it('passes the target to each action', () => {
   expect(handlers.onResetPassword).toHaveBeenCalledExactlyOnceWith(2, 'member');
   fireEvent.click(screen.getByRole('button', { name: 'admin.disable' }));
   expect(handlers.onSetDisabled).toHaveBeenCalledExactlyOnceWith(2, true);
-  fireEvent.click(screen.getByRole('button', { name: 'admin.delete' }));
+  fireEvent.click(screen.getByRole('button', { name: 'admin.deleteForever' }));
   expect(handlers.onDelete).toHaveBeenCalledExactlyOnceWith(2, 'member');
+});
+
+it('lets admins block but not delete users', () => {
+  renderCard(member, admin);
+  fireEvent.click(screen.getByRole('button', { name: 'admin.disable' }));
+  expect(handlers.onSetDisabled).toHaveBeenCalledExactlyOnceWith(2, true);
+  expect(screen.queryByRole('button', { name: 'admin.deleteForever' })).not.toBeInTheDocument();
 });
 
 it('offers demote for an admin and enable for a disabled user', () => {
@@ -33,7 +40,8 @@ it('offers demote for an admin and enable for a disabled user', () => {
   expect(handlers.onSetRole).toHaveBeenCalledExactlyOnceWith(2, 'user');
   fireEvent.click(screen.getByRole('button', { name: 'admin.enable' }));
   expect(handlers.onSetDisabled).toHaveBeenCalledExactlyOnceWith(2, false);
-  expect(screen.getByText('disabled')).toBeInTheDocument();
+  expect(screen.getByText('Blocked')).toBeInTheDocument();
+  expect(screen.getByText('Admin')).toBeInTheDocument();
 });
 
 it('leaves role changes to the owner', () => {

@@ -11,6 +11,7 @@ export interface SetlistEntry {
   youtube_url: string | null;
   language: string;
   is_private_placeholder?: boolean;
+  is_deactivated?: boolean;
   not_downloaded?: boolean;
   visibility?: string;
   // Per-song overrides (runtime only)

@@ -3,6 +3,13 @@ const { isRegistrationAllowed } = require('../lib/db');
 const User = require('../lib/models/user');
 const Invite = require('../lib/models/invite');
 const { requireAuth, checkPassword, sessionResponse, createAccount, setPassword } = require('../lib/auth');
+const Activity = require('../lib/models/activity');
+
+/** New accounts appear in the history log, recorded as the new user themselves. */
+function logJoined(account, how) {
+  Activity.log(account, Activity.ACTIONS.USER_ADDED, { type: 'user', id: account.id, name: account.username, details: { via: how } });
+  return account;
+}
 const { CREDENTIALS_REQUIRED, validateObjectBody, assertValid, validateUserCredentials, validatePassword } = require('../lib/validation');
 const { LIMITS } = require('../lib/constants');
 const { AppError } = require('../lib/errors');
@@ -43,7 +50,7 @@ function createAuthRouter() {
     const { username, password, turnstile_token } = req.body;
     await assertTurnstile(turnstile_token);
     assertValid(validateUserCredentials(username, password));
-    res.json(sessionResponse(await createAccount(username, password, (name, hash) => User.register(name, hash, assertCanRegister))));
+    res.json(sessionResponse(logJoined(await createAccount(username, password, (name, hash) => User.register(name, hash, assertCanRegister)), 'registration')));
   });
 
   router.post('/login', async (req, res) => {
@@ -65,7 +72,7 @@ function createAuthRouter() {
     assertValid(validateUserCredentials(username, password));
     if (!Invite.findByCode(inviteCode)) throw new AppError(Invite.INVALID_INVITE, 400);
 
-    res.json(sessionResponse(await createAccount(username, password, (name, hash) => Invite.redeem(inviteCode, name, hash))));
+    res.json(sessionResponse(logJoined(await createAccount(username, password, (name, hash) => Invite.redeem(inviteCode, name, hash)), 'invite')));
   });
 
   router.put('/password', blockInDemo, requireAuth, async (req, res) => {

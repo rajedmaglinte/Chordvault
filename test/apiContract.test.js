@@ -232,7 +232,8 @@ test('API responses match the recorded contract', async t => {
   await call('admin', '/api/admin/users', { method: 'POST', body: { username: 'ab', password: 'secret12' } });
   const carol = await call('admin', '/api/admin/users', { method: 'POST', body: { username: ' carol ', password: 'secret12' } });
   await call('admin', '/api/admin/users', { method: 'POST', body: { username: 'carol', password: 'secret12' } });
-  await call('admin', `/api/admin/users/${carol.id}`, { method: 'DELETE' });
+  await call('admin', `/api/admin/users/${carol.id}`, { method: 'DELETE' }); // admins block, they cannot delete
+  await call('owner', `/api/admin/users/${carol.id}`, { method: 'DELETE' });
   await call('admin', '/api/admin/invites', { method: 'POST' });
   const [invite] = await call('admin', '/api/admin/invites');
   await call('admin', `/api/admin/invites/${invite.id}`, { method: 'DELETE' });

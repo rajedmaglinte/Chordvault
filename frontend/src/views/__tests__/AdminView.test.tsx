@@ -38,7 +38,7 @@ it('cancel does not write and a confirmed pending role change cannot submit twic
   expect(api.mock.calls.filter(call => call[0] !== 'GET')).toHaveLength(1);
 });
 
-it.each(['{Enter}', ' '])('navigates cards with %s and keeps nested Delete activation separate', async (key) => {
+it.each(['{Enter}', ' '])('navigates cards with %s and keeps nested Deactivate activation separate', async (key) => {
   api.mockImplementation((_method: string, path: string) => {
     if (path.endsWith('/stats')) return Promise.resolve({ userCount: 1, songCount: 1, pendingCount: 1, noFormatCount: 0, recentSongs: [{ id: 7, title: 'Recent song', username: 'owner', created_at: '2026-01-01' }] });
     if (path.endsWith('/corrections')) return Promise.resolve([{ id: 8, parent_id: 9, title: 'Correction song', submitter: 'member', created_at: '2026-01-01' }]);
@@ -57,7 +57,7 @@ it.each(['{Enter}', ' '])('navigates cards with %s and keeps nested Delete activ
   await userEvent.keyboard(key);
   expect(navigate).toHaveBeenCalledExactlyOnceWith('song-view', { id: '9' });
   navigate.mockClear();
-  within(recent).getByRole('button', { name: 'admin.delete' }).focus();
+  within(recent).getByRole('button', { name: 'admin.deactivate' }).focus();
   await userEvent.keyboard(key);
   expect(await screen.findByRole('button', { name: 'Confirm' })).toBeInTheDocument();
   expect(navigate).not.toHaveBeenCalled();
