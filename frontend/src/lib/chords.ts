@@ -298,7 +298,7 @@ export function prepareSong(content: string, semitones = 0, nashville = false): 
     if (!song) return null;
 
     // Fix accidentals after transposition to preserve sharp preference and prevent auto-correction
-    const transposed = fixChordAccidentals(semitones !== 0 ? song.transpose(semitones) : song);
+    const transposed = fixChordAccidentals(semitones !== 0 ? keepSectionLabels(song, song.transpose(semitones)) : song);
 
     const key = transposed.key;
 
@@ -319,6 +319,21 @@ export function renderChordPro(content: string, semitones = 0, nashville = false
   } catch {
     return `<pre style="font-family:var(--font-mono);font-size:13px;white-space:pre-wrap;color:var(--text)">${escHtml(content)}</pre>`;
   }
+}
+
+/**
+ * ChordProParser reads a label line like [Chorus] as a chord, and transposing then rewrites it
+ * ("Chorus" up a tone becomes "Dhorus", "Intro" becomes "IIntro"), so the section heading and its
+ * jump button disappear. Put the original labels back after transposing.
+ */
+function keepSectionLabels(original: ChordSheetJS.Song, transposed: ChordSheetJS.Song): ChordSheetJS.Song {
+  const before: string[] = [];
+  original.mapChordLyricsPairs((pair) => { before.push(pair.chords); return pair; });
+  let i = 0;
+  return transposed.mapChordLyricsPairs((pair) => {
+    const label = before[i++];
+    return label !== undefined && SECTION_LABEL_RE.test(label) ? pair.set({ chords: label }) : pair;
+  });
 }
 
 function fixChordAccidentals(song: ChordSheetJS.Song): ChordSheetJS.Song {

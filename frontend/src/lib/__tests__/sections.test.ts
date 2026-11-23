@@ -24,3 +24,14 @@ describe('sectionKind', () => {
     expect(sectionKind('Bridge')).toBe('bridge');
   });
 });
+
+describe('section labels survive transposing', () => {
+  it.each([2, 5, -3])('ChordPro with [Intro] / [Chorus] label lines, %i semitones', async (st) => {
+    const { renderChordPro } = await import('../chords');
+    const content = '{title: X}\n\n[Intro]\n[C] [G] [F] [C]\n\n[Verse 1]\n[C]Open the eyes\n\n[Chorus]\nTo see You [G]high\n\n[Pre-Chorus]\n[F]Holy\n';
+    const doc = new DOMParser().parseFromString(renderChordPro(content, st, false), 'text/html');
+    expect(Array.from(doc.querySelectorAll('h3.label')).map(h => h.textContent)).toEqual(['Intro', 'Verse 1', 'Chorus', 'Pre-Chorus']);
+    // The chords themselves still move.
+    expect(doc.querySelector('.chord:not(:empty)')?.textContent).not.toBe('C');
+  });
+});
