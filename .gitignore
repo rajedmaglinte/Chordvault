@@ -27,3 +27,4 @@ scripts/test-*.mjs
 scripts/test-*.png
 scratch/
 dist/
+logs/
