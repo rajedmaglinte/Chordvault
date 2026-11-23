@@ -13,8 +13,8 @@ Environment=HOST=127.0.0.1
 Environment=DB_PATH=/var/lib/chordvault/chordvault.db
 # Small heap and a hard cap so ChordVault can never crowd out other apps on a small server.
 Environment=NODE_OPTIONS=--max-old-space-size=128
-MemoryHigh=180M
-MemoryMax=256M
+MemoryHigh=220M
+MemoryMax=300M
 ExecStart=/opt/chordvault/node/bin/node server.js
 Restart=on-failure
 RestartSec=3

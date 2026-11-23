@@ -39,7 +39,7 @@ and switches back automatically if the new version does not start.
 | nginx site | `/etc/nginx/sites-available/<domain>` |
 | Services | `chordvault.service`, `chordvault-backup.timer` |
 
-Logs: `journalctl -u chordvault -f`. Memory is capped at 256 MB (`MemoryMax`).
+Logs: `journalctl -u chordvault -f`. Memory is capped at 300 MB (`MemoryMax`).
 
 ## Remove completely
 
