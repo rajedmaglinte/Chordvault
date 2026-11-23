@@ -8,3 +8,13 @@ export function readFile(file: File, as: 'text' | 'dataURL'): Promise<string> {
     else reader.readAsDataURL(file);
   });
 }
+
+/** The file's bytes (FileReader, which test environments support more widely than Blob.arrayBuffer()). */
+export function readFileBytes(file: File): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
+  });
+}

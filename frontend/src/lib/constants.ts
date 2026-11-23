@@ -23,7 +23,7 @@ export const IMPORT_MAX_BATCH = shared.limits.MAX_IMPORT;
 export const IMPORT_MAX_BATCH_BYTES = 12_000_000;
 export const IMPORT_CONFIRM_FILE_COUNT = 5000;
 export const DEMO_MAX_IMPORT = shared.limits.DEMO_MAX_IMPORT;
-export const IMPORT_ACCEPT = '.cho,.chopro,.pro,.chordpro,.crd,.txt';
+export const IMPORT_ACCEPT = '.cho,.chopro,.pro,.chordpro,.crd,.txt,.docx,.zip';
 
 // Font family registered with jsPDF for PDF export. Lives here rather than in
 // pdf-fonts.ts so pdf-config.ts can read the name without pulling in jsPDF.

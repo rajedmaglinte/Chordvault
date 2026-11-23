@@ -124,3 +124,42 @@ it('truncates a demo selection to the existing import limit', async () => {
   await waitFor(() => expect(importSongs).toHaveBeenCalledTimes(1));
   expect(vi.mocked(importSongs).mock.calls[0][0]).toHaveLength(20);
 });
+
+describe('Word documents', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('converts .docx files in the browser, previews them, and uploads only ChordPro text', async () => {
+    const { makeDocx } = await import('../../lib/docx/__tests__/makeDocx');
+    const docx = new File([makeDocx(['OPEN THE EYES', '[Verse 1]', 'C', 'Open the eyes of my heart, Lord'])], 'OPEN THE EYES.docx');
+    vi.mocked(importSongs).mockResolvedValueOnce({ imported: 1, skipped: [], errors: [] });
+    render(<ImportModal opened onClose={() => {}} />);
+    await userEvent.upload(screen.getByLabelText('ChordPro file upload'), [docx]);
+    await userEvent.click(screen.getByRole('button', { name: 'Convert and preview' }));
+
+    const preview = await screen.findByTestId('import-preview');
+    expect(within(preview).getByText('Open The Eyes')).toBeInTheDocument();
+    expect(importSongs).not.toHaveBeenCalled();
+
+    // Check the chords, then change the language before importing.
+    await userEvent.click(within(preview).getByRole('button', { name: /Open The Eyes: show preview/ }));
+    expect(preview.querySelector('.chord-sheet .chord:not(:empty)')?.textContent).toBe('C');
+    await userEvent.selectOptions(within(preview).getByLabelText('Language of Open The Eyes'), 'tl');
+    await userEvent.click(screen.getByRole('button', { name: 'Import 1 song' }));
+
+    await waitFor(() => expect(importSongs).toHaveBeenCalledTimes(1));
+    const [songs] = vi.mocked(importSongs).mock.calls[0];
+    expect(songs).toEqual([{ content: expect.stringContaining('{title: Open The Eyes}') }]);
+    expect(songs[0].content).toContain('{x_language: tl}');
+    expect(songs[0].content).toContain('{start_of_verse: Verse 1}\n[C]Open the eyes of my heart, Lord');
+    expect(await screen.findByTestId('import-summary')).toHaveTextContent('1 imported');
+  });
+
+  it('lists a file that cannot be read without importing it', async () => {
+    render(<ImportModal opened onClose={() => {}} />);
+    await userEvent.upload(screen.getByLabelText('ChordPro file upload'), [new File(['not a zip'], 'broken.docx')]);
+    await userEvent.click(screen.getByRole('button', { name: 'Convert and preview' }));
+    const preview = await screen.findByTestId('import-preview');
+    expect(within(preview).getByText('Not a zip or .docx file')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Import 0 songs' })).toBeDisabled();
+  });
+});

@@ -164,7 +164,7 @@ export function SettingsView() {
         <SettingsSection title={isAdmin ? 'Import & Export' : 'Export Songs'}>
           <Text size="sm" c="dimmed" mb="sm">
             Download all songs you can access as ChordPro (.cho) files in a zip.
-            {isAdmin ? ' As an admin, you can also bulk import ChordPro files into the library.' : ''}
+            {isAdmin ? ' As an admin, you can also bulk import songs: ChordPro or text files, or Word documents (.docx, or a zip downloaded from Google Drive), which are converted and previewed first.' : ''}
           </Text>
           <Stack gap="sm">
             <Group>
