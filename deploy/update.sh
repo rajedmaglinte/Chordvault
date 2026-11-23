@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Update ChordVault to the newest release (or TAG=<tag>), keeping the previous version
+# Update ChordVault to the newest release, keeping the previous version
 # so a failed update switches straight back.
 #   sudo bash /opt/chordvault/current/deploy/update.sh
 set -euo pipefail
 
 REPO="${REPO:-rajedmaglinte/chordvault}"
-TAG="${TAG:-latest}"
+RELEASE_BRANCH="${RELEASE_BRANCH:-release}"
 APP=/opt/chordvault
 DATA=/var/lib/chordvault
 export PATH="$APP/node/bin:$PATH"
@@ -17,7 +17,7 @@ green() { printf '\033[32m%s\033[0m\n' "$*"; }
 [ -L "$APP/current" ] || { red "ChordVault is not installed with install.sh"; exit 1; }
 PORT=$(grep -E '^PORT=' /etc/chordvault/chordvault.env | cut -d= -f2); PORT=${PORT:-3100}
 
-if [ "$TAG" = latest ]; then URL="https://github.com/${REPO}/releases/latest/download"; else URL="https://github.com/${REPO}/releases/download/${TAG}"; fi
+URL="https://raw.githubusercontent.com/${REPO}/${RELEASE_BRANCH}"
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 curl -fsSL "$URL/chordvault-release.tar.gz" -o "$tmp/release.tar.gz"
 curl -fsSL "$URL/chordvault-release.tar.gz.sha256" -o "$tmp/release.sha256"

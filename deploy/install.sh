@@ -14,7 +14,7 @@ set -euo pipefail
 DOMAIN="${1:-}"
 PORT="${PORT:-3100}"
 REPO="${REPO:-rajedmaglinte/chordvault}"
-TAG="${TAG:-latest}"
+RELEASE_BRANCH="${RELEASE_BRANCH:-release}"
 APP=/opt/chordvault
 DATA=/var/lib/chordvault
 ETC=/etc/chordvault
@@ -30,11 +30,8 @@ fail() { red "STOPPED: $*"; red "Nothing after this point was changed."; exit 1;
 [ "$(id -u)" -eq 0 ] || fail "run with sudo"
 [[ "$DOMAIN" =~ ^[a-z0-9.-]+$ ]] || fail "domain looks wrong: $DOMAIN"
 
-if [ "$TAG" = latest ]; then
-  RELEASE_URL="https://github.com/${REPO}/releases/latest/download"
-else
-  RELEASE_URL="https://github.com/${REPO}/releases/download/${TAG}"
-fi
+# The compiled release bundle lives on its own branch (see deploy/make-release.sh).
+RELEASE_URL="https://raw.githubusercontent.com/${REPO}/${RELEASE_BRANCH}"
 
 step "Checking the server (read-only)"
 problems=0
@@ -62,7 +59,7 @@ cat <<PLAN
 This will:
   1. create system user 'chordvault' (no login)
   2. download Node.js 24 into ${APP}/node (checksum verified)
-  3. download ChordVault (${TAG}) from github.com/${REPO} into ${APP}/releases/
+  3. download the ChordVault release from github.com/${REPO} (checksum verified) into ${APP}/releases/
   4. create ${DATA} (database + daily backups) and ${ETC}/chordvault.env (random secret)
   5. create the super admin account (you choose the username and password now)
   6. install and start systemd services: chordvault, chordvault-backup.timer

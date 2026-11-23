@@ -55,5 +55,5 @@ sudo certbot delete --cert-name songs.magrem.net
 
 ## Making a release (maintainers)
 
-`deploy/make-release.sh 1.33.0-church.N` builds `dist/chordvault-release.tar.gz` and its
-`.sha256`; attach both to a GitHub release. Servers download the latest release.
+`deploy/make-release.sh 1.33.0-church.N --publish` builds `dist/chordvault-release.tar.gz` and
+its `.sha256` and replaces the single commit on the `release` branch, which servers download from.
