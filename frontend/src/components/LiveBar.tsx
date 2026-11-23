@@ -51,8 +51,8 @@ export function LiveBar({ remote, status, leading, following, canLead, error, on
   if (canLead && status === 'connected') {
     return (
       <Group className="live-bar is-idle" wrap="nowrap" gap="xs" data-no-swipe>
-        <Text size="sm" c="dimmed" flex={1} truncate>Lead the team from this device</Text>
-        <Button size="xs" variant="light" leftSection={<IconBroadcast size={14} aria-hidden />} onClick={onStartLeading}>Lead live</Button>
+        <Text size="sm" flex={1} truncate>Lead the team: everyone playing this setlist follows your song and section taps.</Text>
+        <Button size="sm" className="live-lead-btn" leftSection={<IconBroadcast size={18} aria-hidden />} onClick={onStartLeading}>Lead live</Button>
       </Group>
     );
   }

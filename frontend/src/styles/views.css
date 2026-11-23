@@ -138,26 +138,26 @@
 /* -- Song section buttons (Intro, V1, C, B...) -- */
 .section-bar {
   display: flex;
-  gap: 9px;
+  gap: 7px;
   overflow-x: auto;
   scrollbar-width: none;
-  padding: 12px 14px 0;
+  padding: 10px 12px 0;
   background: var(--band);
-  scroll-padding-inline: 14px;
+  scroll-padding-inline: 12px;
   /* Let the row scroll sideways without the setlist swipe taking over. */
   touch-action: pan-x;
 }
 .section-bar::-webkit-scrollbar { display: none; }
 .section-bar-btn {
   flex: 0 0 auto;
-  min-width: 66px;
-  min-height: 60px;
-  padding: 0 18px;
+  min-width: 53px;
+  min-height: 48px;
+  padding: 0 14px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--raise);
   color: var(--text);
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   text-align: center;
   white-space: nowrap;
@@ -166,14 +166,14 @@
 .section-bar-btn[data-kind="chorus"] { border-color: var(--line-strong); background: color-mix(in srgb, var(--band) 40%, var(--raise)); }
 .section-bar-btn[aria-current="true"] { background: var(--chord); border-color: var(--chord); color: #fff; }
 .section-bar-btn:focus-visible { outline: 2px solid var(--chord); outline-offset: 2px; }
-@media (pointer: coarse) { .section-bar .section-bar-btn { min-width: 66px; min-height: 66px; } }
+@media (pointer: coarse) { .section-bar .section-bar-btn { min-width: 53px; min-height: 53px; } }
 
 /* Standalone row on the song page sits on the screen's bottom edge. */
-.section-dock .section-bar { padding-bottom: calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); }
-.song-view.has-sections { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+.section-dock .section-bar { padding-bottom: calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); }
+.song-view.has-sections { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
 
 /* The setlist dock grows by one row of section buttons. */
-.setlist-play-container.has-dock.has-sections .chord-sheet-wrap { padding-bottom: calc(154px + env(safe-area-inset-bottom) + 32px); }
+.setlist-play-container.has-dock.has-sections .chord-sheet-wrap { padding-bottom: calc(140px + env(safe-area-inset-bottom) + 32px); }
 
 /* A tapped section glows briefly so the eye lands on it. */
 .chord-sheet .paragraph.section-flash { animation: section-flash 1.2s ease-out; border-radius: 12px; }
@@ -194,7 +194,10 @@
 @keyframes live-pulse { 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) { .live-dot { animation: none !important; } }
 .live-desktop { position: sticky; top: 0; z-index: 50; }
+.live-lead-btn { background: var(--chord); color: #fff; font-weight: 700; flex-shrink: 0; }
+.live-lead-btn:hover { background: color-mix(in srgb, var(--chord) 85%, #000); }
+.live-bar.is-idle { border-left: 4px solid var(--chord); }
 .live-desktop .live-bar { border-top: none; border-bottom: 1px solid var(--border); padding-inline: 20px; }
 .live-desktop .section-bar { padding-bottom: 10px; border-bottom: 1px solid var(--border); }
 .setlist-play-container.has-dock.has-live .chord-sheet-wrap { padding-bottom: calc(76px + 48px + env(safe-area-inset-bottom) + 32px); }
-.setlist-play-container.has-dock.has-sections.has-live .chord-sheet-wrap { padding-bottom: calc(154px + 48px + env(safe-area-inset-bottom) + 32px); }
+.setlist-play-container.has-dock.has-sections.has-live .chord-sheet-wrap { padding-bottom: calc(140px + 48px + env(safe-area-inset-bottom) + 32px); }
