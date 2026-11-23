@@ -13,6 +13,16 @@ out=$(mktemp -d)
 git archive --prefix=chordvault/ HEAD | tar -x -C "$out"
 cp -r public/assets public/fonts public/index.html public/sw.js public/workbox-*.js public/manifest.webmanifest public/icon-*.png "$out/chordvault/public/"
 echo "$VERSION" > "$out/chordvault/RELEASE"
+
+# Bundle the production packages, built with Node.js 24 for Linux x64, so servers need neither
+# npm downloads nor compilers (better-sqlite3 otherwise downloads or compiles a native module).
+NODE24="${NODE24:-$(command -v node)}"
+case "$("$NODE24" -v)" in v24.*) ;; *) echo "set NODE24 to a Node.js 24 binary (found $("$NODE24" -v))"; exit 1;; esac
+(cd "$out/chordvault" && PATH="$(dirname "$NODE24"):$PATH" npm ci --omit=dev --no-audit --no-fund --loglevel=error >/dev/null 2>&1) \
+  || { echo "npm ci failed while bundling packages"; exit 1; }
+(cd "$out/chordvault" && "$NODE24" -e "new (require('better-sqlite3'))(':memory:').close()") \
+  || { echo "bundled better-sqlite3 does not load"; exit 1; }
+echo "node-modules-abi=$("$NODE24" -p process.versions.modules) platform=linux-x64" > "$out/chordvault/BUNDLED"
 mkdir -p dist
 tar -czf dist/chordvault-release.tar.gz -C "$out" chordvault
 (cd dist && sha256sum chordvault-release.tar.gz > chordvault-release.tar.gz.sha256)

@@ -126,7 +126,13 @@ VERSION=$(tar -xzOf "$tmp/release.tar.gz" chordvault/RELEASE 2>/dev/null || date
 REL="$APP/releases/$VERSION"
 mkdir -p "$REL"
 tar -xzf "$tmp/release.tar.gz" -C "$REL" --strip-components=1
-(cd "$REL" && npm ci --omit=dev --no-audit --no-fund --loglevel=error > "$tmp/npm.log" 2>&1) || { cat "$tmp/npm.log"; fail "installing packages failed"; }
+if [ -d "$REL/node_modules" ] && (cd "$REL" && node -e "new (require('better-sqlite3'))(':memory:').close()") >/dev/null 2>&1; then
+  echo "  bundled packages work on this server (no download or compiling needed)"
+else
+  # Fallback: install packages here. better-sqlite3 then needs its prebuilt download or build tools.
+  rm -rf "$REL/node_modules"
+  (cd "$REL" && npm ci --omit=dev --no-audit --no-fund --loglevel=error > "$tmp/npm.log" 2>&1) || { cat "$tmp/npm.log"; fail "installing packages failed. If the log mentions make or g++, run: sudo apt install build-essential python3, then try again"; }
+fi
 ln -sfn "$REL" "$APP/current"
 chown -R root:root "$APP"
 rm -rf "$tmp"
