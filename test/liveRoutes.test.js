@@ -39,9 +39,9 @@ const lead = (id, body, userId = leaderId) => fetch(url(`/${id}`), {
 });
 
 /** Opens a stream and returns a function that resolves with the next event matching `pred`. */
-async function listen(id) {
+async function listen(id, userId = memberId) {
   const ctrl = new AbortController();
-  const res = await fetch(url(`/${id}/stream`), { signal: ctrl.signal });
+  const res = await fetch(url(`/${id}/stream`), { signal: ctrl.signal, headers: { authorization: `Bearer ${tokenFor(userId)}` } });
   assert.equal(res.status, 200);
   assert.match(res.headers.get('content-type'), /text\/event-stream/);
   const reader = res.body.getReader();
@@ -98,8 +98,14 @@ test('only the owner or an admin may lead', async () => {
   assert.equal(anon.status, 401);
 });
 
+test('following needs a signed-in member of the same church', async () => {
+  assert.equal((await fetch(url(`/${publicId}/stream`))).status, 401);
+  const other = await fetch(url(`/${publicId}/stream`), { headers: { authorization: `Bearer ${tokenFor(otherAdminId)}` } });
+  assert.equal(other.status, 404);
+});
+
 test('private setlists cannot go live', async () => {
-  assert.equal((await fetch(url(`/${privateId}/stream`))).status, 404);
+  assert.equal((await fetch(url(`/${privateId}/stream`), { headers: { authorization: `Bearer ${tokenFor(memberId)}` } })).status, 404);
   assert.equal((await lead(privateId, { index: 0 })).status, 404);
 });
 

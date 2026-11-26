@@ -71,7 +71,7 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
   const isOwner = setlist?.user_id && user && setlist.user_id === user.id;
 
   // Live session: the leader's taps move everyone's screen. Public, server-backed setlists only.
-  const liveEnabled = !!setlist && !setlist.isLocal && setlist.visibility !== 'private' && online;
+  const liveEnabled = !!setlist && !setlist.isLocal && setlist.visibility !== 'private' && online && !!user;
   const live = useLiveSession({ setlistId, enabled: liveEnabled, token: user?.token });
   const ownerChurch = (setlist as { owner_church_id?: number | null } | null)?.owner_church_id;
   const churchLeader = isAdmin && (isSiteOwner(user?.role) || ownerChurch == null || ownerChurch === user?.church_id);
@@ -222,7 +222,16 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
     window.scrollTo(0, 0);
   };
 
-  if (loadError) return <Alert title="Setlist unavailable" color="red">{loadError}<Button mt="sm" display="block" onClick={() => navigate('setlists')}>Back to setlists</Button></Alert>;
+  if (loadError) {
+    return (
+      <Alert title="Setlist unavailable" color="red">
+        {loadError}
+        {user
+          ? <Button mt="sm" display="block" onClick={() => navigate('setlists')}>Back to setlists</Button>
+          : <Button mt="sm" display="block" onClick={() => navigate('auth')}>Sign in</Button>}
+      </Alert>
+    );
+  }
   if (!setlist) return <Loading />;
   if (!entry) return <EmptyState text={t('setlist.noSongsYet')} />;
 
@@ -275,7 +284,7 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
     if (!online) return 'Offline: live sync needs the network.';
     if (live.status === 'unavailable') return "Live sync isn't available on this server (it may need updating).";
     if (live.status === 'connecting') return 'Connecting to live sync\u2026';
-    if (live.status === 'connected') return user ? 'Live: waiting for the leader. Your screen will follow when they start.' : 'Live: waiting for the leader. Sign in as the setlist owner or an admin to lead.';
+    if (live.status === 'connected') return 'Live: waiting for the leader. Your screen will follow when they start.';
     return null;
   })();
   const liveBar = (

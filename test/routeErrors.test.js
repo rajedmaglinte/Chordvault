@@ -57,8 +57,9 @@ test('song routes keep their id, not-found and permission errors', async t => {
 test('setlist routes keep their id and not-found errors', async t => {
   const request = await serve(t, mount);
   for (const [path, options, status, error] of [
-    ['/api/setlists/public/abc', {}, 400, 'Invalid setlist ID'],
-    ['/api/setlists/public/999999', {}, 404, 'Setlist not found'],
+    ['/api/setlists/public/abc', owner, 400, 'Invalid setlist ID'],
+    ['/api/setlists/public/999999', owner, 404, 'Setlist not found'],
+    ['/api/setlists/public/999999', {}, 401, 'Authentication required'],
     ['/api/setlists/abc', owner, 400, 'Invalid setlist ID'],
     [`/api/setlists/${setlistId}`, other, 404, 'Setlist not found'],
     ['/api/setlists/abc', { ...owner, method: 'PUT', body: { name: 'x' } }, 400, 'Invalid setlist ID'],

@@ -49,7 +49,8 @@ test('both setlist entry responses mask private song contents and overrides', as
   const id = song('private');
   const setlist = Number(db.prepare("INSERT INTO setlists (user_id,name,visibility) VALUES (?, 'Service', 'public')").run(other.id).lastInsertRowid);
   db.prepare("INSERT INTO setlist_songs (setlist_id,song_id,position,content_override) VALUES (?,?,0,'secret override')").run(setlist,id);
-  for (const [actor, visible] of [[{},false],[other,false],[owner,true],[admin,true],[siteOwner,true]]) {
+  assert.equal((await request(`/api/setlists/public/${setlist}`)).status,401);
+  for (const [actor, visible] of [[other,false],[owner,true],[admin,true],[siteOwner,true]]) {
     const data = await (await request(`/api/setlists/public/${setlist}`,actor)).json();
     assert.equal(data.entries[0].content,visible?content:'');
     assert.equal(data.entries[0].content_override,visible?'secret override':null);

@@ -2,6 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { useLibraryRead } from './useLibraryRead';
 import { showStatusNotification as toast } from '../lib/notifications';
 import { errorMessage, notifyError } from '../lib/errors';
+import { ApiError } from '../lib/api';
+
+/** Setlists belong to a church: explain a refusal in plain words. */
+export const SIGN_IN_FOR_SETLIST = 'Sign in to open this setlist. Setlists are only for members of the church that made them.';
+const NOT_YOURS = "This setlist doesn't exist, or it belongs to another church.";
 import { getLocalSetlists } from '../lib/storage';
 import { applyStoredOverrides, enrichLocalSetlistSongs, localSetlistToSetlist } from '../lib/setlists';
 import type { Setlist } from '../types';
@@ -47,7 +52,10 @@ export function useSetlistLoader({ setlistId, isLocal, navigate }: SetlistLoader
         setSetlist({ ...sl, entries: merged.entries });
         setSavedTargetKeys(merged.targetKeys);
       })
-      .catch((e) => setLoadError(errorMessage(e)));
+      .catch((e) => setLoadError(
+        e instanceof ApiError && e.status === 401 ? SIGN_IN_FOR_SETLIST
+          : e instanceof ApiError && e.status === 404 ? NOT_YOURS
+            : errorMessage(e)));
   }, [setlistId, getSong, getSetlistForViewer, isLocal, navigate]);
 
   const markSaved = useCallback((entryId: number | string, key: string | null) =>

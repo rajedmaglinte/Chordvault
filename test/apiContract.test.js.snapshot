@@ -2944,73 +2944,9 @@ exports[`API responses match the recorded contract 1`] = `
   },
   {
     "call": "GET /api/setlists/public/1 as anon",
-    "status": 200,
+    "status": 401,
     "body": {
-      "id": 1,
-      "user_id": 3,
-      "name": "Sunday",
-      "visibility": "public",
-      "event_date": "2026-03-01",
-      "created_at": "<time>",
-      "updated_at": "<time>",
-      "username": "alice",
-      "owner_church_id": 1,
-      "entries": [
-        {
-          "entry_id": 1,
-          "song_id": 1,
-          "position": 1,
-          "target_key": "A",
-          "nashville": 0,
-          "content_override": null,
-          "title": "Grace",
-          "artist": "Writer",
-          "content": "{title: Grace}\\n{key: G}\\n[G]Amazing Grace",
-          "key": "",
-          "youtube_url": null,
-          "bpm": null,
-          "tags": "worship,hymn",
-          "language": "en",
-          "visibility": "public",
-          "username": "alice"
-        },
-        {
-          "entry_id": 2,
-          "song_id": 5,
-          "position": 2,
-          "target_key": null,
-          "nashville": 0,
-          "content_override": null,
-          "title": "[Private Song]",
-          "artist": "",
-          "content": "",
-          "key": "",
-          "youtube_url": null,
-          "bpm": null,
-          "tags": null,
-          "language": "",
-          "username": "",
-          "is_private_placeholder": true
-        },
-        {
-          "entry_id": 3,
-          "song_id": 4,
-          "position": 3,
-          "target_key": null,
-          "nashville": 0,
-          "content_override": "{title: Morning}\\n[D]Override",
-          "title": "Morning",
-          "artist": "Writer",
-          "content": "{title: Morning}\\n{key: G}\\n[G]Amazing Morning",
-          "key": "",
-          "youtube_url": null,
-          "bpm": 90,
-          "tags": "praise",
-          "language": "en",
-          "visibility": "public",
-          "username": "bob"
-        }
-      ]
+      "error": "Authentication required"
     }
   },
   {
@@ -3341,9 +3277,9 @@ exports[`API responses match the recorded contract 1`] = `
   },
   {
     "call": "GET /api/setlists/public/2 as anon",
-    "status": 404,
+    "status": 401,
     "body": {
-      "error": "Setlist not found"
+      "error": "Authentication required"
     }
   },
   {
@@ -3455,55 +3391,9 @@ exports[`API responses match the recorded contract 1`] = `
   },
   {
     "call": "GET /api/setlists/public/3 as anon",
-    "status": 200,
+    "status": 401,
     "body": {
-      "id": 3,
-      "user_id": 4,
-      "name": "Bob Night",
-      "visibility": "public",
-      "event_date": "2026-02-01",
-      "created_at": "<time>",
-      "updated_at": "<time>",
-      "username": "bob",
-      "owner_church_id": 1,
-      "entries": [
-        {
-          "entry_id": 4,
-          "song_id": 2,
-          "position": 1,
-          "target_key": null,
-          "nashville": 0,
-          "content_override": null,
-          "title": "[Private Song]",
-          "artist": "",
-          "content": "",
-          "key": "",
-          "youtube_url": null,
-          "bpm": null,
-          "tags": null,
-          "language": "",
-          "username": "",
-          "is_private_placeholder": true
-        },
-        {
-          "entry_id": 5,
-          "song_id": 4,
-          "position": 1,
-          "target_key": null,
-          "nashville": 0,
-          "content_override": null,
-          "title": "Morning",
-          "artist": "Writer",
-          "content": "{title: Morning}\\n{key: G}\\n[G]Amazing Morning",
-          "key": "",
-          "youtube_url": null,
-          "bpm": 90,
-          "tags": "praise",
-          "language": "en",
-          "visibility": "public",
-          "username": "bob"
-        }
-      ]
+      "error": "Authentication required"
     }
   },
   {
@@ -8037,55 +7927,9 @@ exports[`API responses match the recorded contract 5`] = `
   },
   {
     "call": "GET /api/setlists/public/3 as anon",
-    "status": 200,
+    "status": 401,
     "body": {
-      "id": 3,
-      "user_id": 4,
-      "name": "Bob Night",
-      "visibility": "public",
-      "event_date": "2026-02-01",
-      "created_at": "<time>",
-      "updated_at": "<time>",
-      "username": "bob",
-      "owner_church_id": 1,
-      "entries": [
-        {
-          "entry_id": 4,
-          "song_id": 2,
-          "position": 1,
-          "target_key": null,
-          "nashville": 0,
-          "content_override": null,
-          "title": "[Private Song]",
-          "artist": "",
-          "content": "",
-          "key": "",
-          "youtube_url": null,
-          "bpm": null,
-          "tags": null,
-          "language": "",
-          "username": "",
-          "is_private_placeholder": true
-        },
-        {
-          "entry_id": 5,
-          "song_id": 4,
-          "position": 1,
-          "target_key": null,
-          "nashville": 0,
-          "content_override": null,
-          "title": "Morning",
-          "artist": "",
-          "content": "{title: Morning}\\n{key: G}\\n[G]Amazing Morning",
-          "key": "G",
-          "youtube_url": null,
-          "bpm": null,
-          "tags": null,
-          "language": "",
-          "visibility": "public",
-          "username": "bob"
-        }
-      ]
+      "error": "Authentication required"
     }
   },
   {

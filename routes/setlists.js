@@ -5,7 +5,7 @@ const { validateListQuery, validateObjectBody, parseId, requireId, assertValid, 
 const { AppError, requireFound, requireChanged } = require('../lib/errors');
 const Setlist = require('../lib/models/setlist');
 const Song = require('../lib/models/song');
-const { maskSetlistEntry, canViewSongVisibility } = require('../lib/songAccess');
+const { maskSetlistEntry, canViewSongVisibility, canOpenChurchSetlist } = require('../lib/songAccess');
 const { normalizeVisibility } = require('../shared/access.mjs');
 
 const requireSetlistId = raw => requireId(raw, 'Invalid setlist ID');
@@ -42,8 +42,11 @@ function createSetlistsRouter() {
     res.json(Setlist.listPublic(setlistListOptions(req.query), req.user?.church_id ?? null));
   });
 
-  router.get('/setlists/public/:id', optionalAuth, (req, res) => {
-    res.json(withEntries(requireFound(Setlist.findPublicById(requireSetlistId(req.params.id)), 'Setlist not found'), req.user));
+  // A church's setlists are for its signed-in members only, even with a direct link.
+  router.get('/setlists/public/:id', requireAuth, (req, res) => {
+    const setlist = Setlist.findPublicById(requireSetlistId(req.params.id));
+    if (!canOpenChurchSetlist(req.user, setlist)) throw new AppError('Setlist not found', 404);
+    res.json(withEntries(setlist, req.user));
   });
 
   router.get('/setlists/:id', requireAuth, (req, res) => {

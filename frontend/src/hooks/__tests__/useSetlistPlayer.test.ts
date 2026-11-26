@@ -83,8 +83,14 @@ describe('useSetlistPlayer Hook', () => {
   it('reports a failed online load instead of a setlist', async () => {
     mockApiCall.mockRejectedValue(new ApiError('Setlist not found', 404));
     const { result } = renderHook(() => useSetlistPlayer({ setlistId: 1, navigate }));
-    await waitFor(() => expect(result.current.loadError).toBe('Setlist not found'));
+    await waitFor(() => expect(result.current.loadError).toBe("This setlist doesn't exist, or it belongs to another church."));
     expect(result.current.setlist).toBeNull();
+  });
+
+  it('asks signed-out visitors to sign in, since setlists are for church members', async () => {
+    mockApiCall.mockRejectedValue(new ApiError('Authentication required', 401));
+    const { result } = renderHook(() => useSetlistPlayer({ setlistId: 1, navigate }));
+    await waitFor(() => expect(result.current.loadError).toMatch(/^Sign in to open this setlist/));
   });
 
   it('does not scroll after unmounting during a song change', async () => {

@@ -6,7 +6,7 @@ const { createSongsRouter } = require('../routes/songs');
 const { createSetlistsRouter } = require('../routes/setlists');
 const { createAdminRouter } = require('../routes/admin');
 
-// One site, several churches: public songs are shared by everyone; people, setlists,
+// One site, several churches: public songs are shared by everyone; people, setlists (members only),
 // admin rights and the history log belong to a church.
 
 const owner = user('site-owner', 'owner');            // first church ("My Church")
@@ -75,7 +75,10 @@ test('a second church joins, shares public songs and stays separate otherwise', 
   assert.ok((await listFor(leader.token)).includes('Our Sunday'));
   assert.ok(!(await listFor(graceMember.token)).includes('Our Sunday'));
   assert.deepEqual(await listFor(undefined), []);
-  assert.equal((await call(`/api/setlists/public/${sl}`)).status, 200);
+  // Even with a direct link, a setlist opens only for signed-in members of its church.
+  assert.equal((await call(`/api/setlists/public/${sl}`, { token: leader.token })).status, 200);
+  assert.equal((await call(`/api/setlists/public/${sl}`)).status, 401);
+  assert.equal((await call(`/api/setlists/public/${sl}`, { token: graceMember.token })).status, 404);
 
   // History is per church; the owner sees all of it.
   const historyFor = async token => (await json(await call('/api/admin/history', { token }))).body.entries.map(e => e.target_name);

@@ -82,7 +82,7 @@ test('a deactivated song in a setlist shows as unavailable', async (t) => {
   const sl = (await json(await call('/api/setlists', { method: 'POST', token: alice.token, body: { name: 'Sunday', visibility: 'public' } }))).body.id;
   await call(`/api/setlists/${sl}/songs`, { method: 'POST', token: alice.token, body: { song_id: song } });
   await call(`/api/songs/${song}`, { method: 'DELETE', token: admin.token });
-  const entry = (await json(await call(`/api/setlists/public/${sl}`))).body.entries[0];
+  const entry = (await json(await call(`/api/setlists/public/${sl}`, { token: bob.token }))).body.entries[0];
   assert.equal(entry.is_deactivated, true);
   assert.equal(entry.content, '');
 });

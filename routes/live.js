@@ -1,6 +1,7 @@
 const express = require('express');
 const { rateLimit } = require('express-rate-limit');
 const { requireAuth } = require('../lib/auth');
+const { canOpenChurchSetlist } = require('../lib/songAccess');
 const { AppError, requireFound } = require('../lib/errors');
 const { requireId } = require('../lib/validation');
 const Setlist = require('../lib/models/setlist');
@@ -63,9 +64,10 @@ function createLiveRouter() {
     message: { error: 'Too many requests. Please try again later.' } });
   const limitsOn = () => !['development', 'test'].includes(process.env.NODE_ENV);
 
-  router.get('/:id/stream', (req, res, next) => (limitsOn() ? listenLimiter(req, res, next) : next()), (req, res) => {
+  // Following needs a signed-in member of the setlist's church (sent as an Authorization header).
+  router.get('/:id/stream', (req, res, next) => (limitsOn() ? listenLimiter(req, res, next) : next()), requireAuth, (req, res) => {
     const id = requireSetlistId(req.params.id);
-    findLiveSetlist(id);
+    if (!canOpenChurchSetlist(req.user, findLiveSetlist(id))) throw new AppError('Setlist not found or not public', 404);
     const s = sessionFor(id);
     if (s.listeners.size >= MAX_LISTENERS_PER_SETLIST || totalListeners >= MAX_LISTENERS_TOTAL) {
       forget(id, s);

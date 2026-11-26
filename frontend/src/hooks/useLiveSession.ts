@@ -15,7 +15,7 @@ export type LiveStatus = 'off' | 'connecting' | 'connected' | 'unavailable';
 
 interface Options {
   setlistId: number | string;
-  /** False for browser-only setlists, private setlists, or while offline. */
+  /** False for browser-only setlists, private setlists, signed-out viewers, or while offline. */
   enabled: boolean;
   token?: string | null;
 }
@@ -32,18 +32,46 @@ export function useLiveSession({ setlistId, enabled, token }: Options) {
   const [error, setError] = useState<string | null>(null);
   const last = useRef<{ index: number; section: number } | null>(null);
 
+  // Follow the session as a stream of Server-Sent Events. fetch (not EventSource) so the member's
+  // sign-in goes in a header: setlists are for their church's members only.
   useEffect(() => {
-    if (!enabled || typeof EventSource === 'undefined') { setStatus('off'); setRemote(null); return; }
-    setStatus('connecting');
-    const es = new EventSource(`/api/live/${encodeURIComponent(String(setlistId))}/stream`);
-    es.onopen = () => setStatus('connected');
-    es.onmessage = (e) => {
-      try { setRemote(JSON.parse(e.data) as LiveState); setStatus('connected'); } catch { /* ignore malformed */ }
+    if (!enabled || !token || typeof fetch !== 'function') { setStatus('off'); setRemote(null); return; }
+    const ctrl = new AbortController();
+    let retry: number | undefined;
+    const url = `/api/live/${encodeURIComponent(String(setlistId))}/stream`;
+    const connect = async () => {
+      setStatus('connecting');
+      try {
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' }, signal: ctrl.signal });
+        if ([401, 403, 404].includes(res.status)) { setStatus('unavailable'); return; }
+        if (!res.ok || !res.body) throw new Error(`stream ${res.status}`);
+        setStatus('connected');
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          let cut;
+          while ((cut = buf.indexOf('\n\n')) >= 0) {
+            const event = buf.slice(0, cut);
+            buf = buf.slice(cut + 2);
+            const data = event.split('\n').filter(l => l.startsWith('data:')).map(l => l.slice(5).trimStart()).join('\n');
+            if (data) { try { setRemote(JSON.parse(data) as LiveState); } catch { /* ignore malformed */ } }
+          }
+        }
+      } catch {
+        if (ctrl.signal.aborted) return;
+      }
+      if (ctrl.signal.aborted) return;
+      // Dropped (sleep, Wi-Fi change, server restart): try again shortly.
+      setStatus('connecting');
+      retry = window.setTimeout(() => { void connect(); }, 2000);
     };
-    // EventSource retries on its own; CLOSED means the server refused (e.g. not public).
-    es.onerror = () => setStatus(es.readyState === EventSource.CLOSED ? 'unavailable' : 'connecting');
-    return () => es.close();
-  }, [setlistId, enabled]);
+    void connect();
+    return () => { ctrl.abort(); if (retry) window.clearTimeout(retry); };
+  }, [setlistId, enabled, token]);
 
   const post = useCallback(async (body: Record<string, unknown>) => {
     try {
