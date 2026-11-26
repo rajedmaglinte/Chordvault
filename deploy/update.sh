@@ -1,21 +1,34 @@
 #!/usr/bin/env bash
-# Update ChordVault to the newest release, keeping the previous version
-# so a failed update switches straight back.
+# Update one ChordVault instance to the newest release, keeping the previous version
+# so a failed update switches straight back. Run it from the instance it should update:
 #   sudo bash /opt/chordvault/current/deploy/update.sh
+#   sudo bash /opt/grace/current/deploy/update.sh        (another church on the same server)
 set -euo pipefail
 
 REPO="${REPO:-rajedmaglinte/chordvault}"
 RELEASE_BRANCH="${RELEASE_BRANCH:-release}"
-APP=/opt/chordvault
-DATA=/var/lib/chordvault
+# The instance is the /opt/<instance> folder this script was started from.
+SELF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+GUESS=$(dirname "$(dirname "$SELF_DIR")")
+[ "$(basename "$GUESS")" = releases ] && GUESS=$(dirname "$GUESS")
+INSTANCE="${INSTANCE:-$(basename "$GUESS")}"
+APP="/opt/${INSTANCE}"
+DATA="/var/lib/${INSTANCE}"
+ETC="/etc/${INSTANCE}"
 export PATH="$APP/node/bin:$PATH"
 
 red() { printf '\033[31m%s\033[0m\n' "$*"; }
 green() { printf '\033[32m%s\033[0m\n' "$*"; }
 
 [ "$(id -u)" -eq 0 ] || { red "run with sudo"; exit 1; }
-[ -L "$APP/current" ] || { red "ChordVault is not installed with install.sh"; exit 1; }
-PORT=$(grep -E '^PORT=' /etc/chordvault/chordvault.env | cut -d= -f2); PORT=${PORT:-3100}
+[ -L "$APP/current" ] && [ -f "$ETC/chordvault.env" ] || { red "No ChordVault instance '${INSTANCE}' installed with install.sh (looked in ${APP})"; exit 1; }
+PORT=$(grep -E '^PORT=' "$ETC/chordvault.env" | cut -d= -f2); PORT=${PORT:-3100}
+
+render_unit() {
+  sed -e "s#/opt/chordvault#${APP}#g" -e "s#/var/lib/chordvault#${DATA}#g" -e "s#/etc/chordvault#${ETC}#g" \
+      -e "s#^User=chordvault\$#User=${INSTANCE}#" -e "s#^Group=chordvault\$#Group=${INSTANCE}#" "$1" > "$2"
+  chmod 644 "$2"
+}
 
 URL="https://raw.githubusercontent.com/${REPO}/${RELEASE_BRANCH}"
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
@@ -27,7 +40,7 @@ PREVIOUS=$(readlink -f "$APP/current")
 REL="$APP/releases/$VERSION"
 if [ "$REL" = "$PREVIOUS" ]; then green "Already on ${VERSION}."; exit 0; fi
 
-echo "Updating $(basename "$PREVIOUS") -> ${VERSION}"
+echo "Updating ${INSTANCE}: $(basename "$PREVIOUS") -> ${VERSION}"
 rm -rf "$REL"; mkdir -p "$REL"
 tar -xzf "$tmp/release.tar.gz" -C "$REL" --strip-components=1
 if [ -d "$REL/node_modules" ] && (cd "$REL" && node -e "new (require('better-sqlite3'))(':memory:').close()") >/dev/null 2>&1; then
@@ -40,27 +53,27 @@ fi
 chown -R root:root "$REL"
 
 echo "Backing up the database first..."
-systemctl start chordvault-backup.service
+systemctl start "${INSTANCE}-backup.service"
 cp -a "$DATA/chordvault.db" "$DATA/backups/before-${VERSION}.db"
-chown chordvault:chordvault "$DATA/backups/before-${VERSION}.db"
+chown "$INSTANCE:$INSTANCE" "$DATA/backups/before-${VERSION}.db"
 
-install -m 644 "$REL/deploy/chordvault.service" /etc/systemd/system/chordvault.service
-install -m 644 "$REL/deploy/chordvault-backup.service" /etc/systemd/system/chordvault-backup.service
-install -m 644 "$REL/deploy/chordvault-backup.timer" /etc/systemd/system/chordvault-backup.timer
+render_unit "$REL/deploy/chordvault.service" "/etc/systemd/system/${INSTANCE}.service"
+render_unit "$REL/deploy/chordvault-backup.service" "/etc/systemd/system/${INSTANCE}-backup.service"
+render_unit "$REL/deploy/chordvault-backup.timer" "/etc/systemd/system/${INSTANCE}-backup.timer"
 systemctl daemon-reload
 ln -sfn "$REL" "$APP/current"
-systemctl restart chordvault
+systemctl restart "$INSTANCE"
 
 for _ in $(seq 1 30); do curl -fs "http://127.0.0.1:${PORT}/api/auth/config" >/dev/null && break; sleep 1; done
 if curl -fs "http://127.0.0.1:${PORT}/api/auth/config" >/dev/null; then
-  green "ChordVault ${VERSION} is running."
+  green "ChordVault ${INSTANCE} ${VERSION} is running."
   # Keep the three newest releases.
   ls -1dt "$APP"/releases/* | tail -n +4 | xargs -r rm -rf
 else
   red "New version did not start. Switching back to $(basename "$PREVIOUS")."
-  journalctl -u chordvault -n 30 --no-pager || true
+  journalctl -u "$INSTANCE" -n 30 --no-pager || true
   ln -sfn "$PREVIOUS" "$APP/current"
-  install -m 644 "$PREVIOUS/deploy/chordvault.service" /etc/systemd/system/chordvault.service 2>/dev/null || true
-  systemctl daemon-reload; systemctl restart chordvault
+  render_unit "$PREVIOUS/deploy/chordvault.service" "/etc/systemd/system/${INSTANCE}.service" 2>/dev/null || true
+  systemctl daemon-reload; systemctl restart "$INSTANCE"
   exit 1
 fi
