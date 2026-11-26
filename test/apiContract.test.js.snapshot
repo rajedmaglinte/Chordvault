@@ -3829,7 +3829,8 @@ exports[`API responses match the recorded contract 1`] = `
           "artist": "Writer",
           "visibility": "public",
           "created_at": "<time>",
-          "username": "alice"
+          "username": "alice",
+          "owner_church_id": 1
         },
         {
           "id": 5,
@@ -3837,7 +3838,8 @@ exports[`API responses match the recorded contract 1`] = `
           "artist": "Writer",
           "visibility": "private",
           "created_at": "<time>",
-          "username": "bob"
+          "username": "bob",
+          "owner_church_id": 1
         },
         {
           "id": 4,
@@ -3845,7 +3847,8 @@ exports[`API responses match the recorded contract 1`] = `
           "artist": "Writer",
           "visibility": "public",
           "created_at": "<time>",
-          "username": "bob"
+          "username": "bob",
+          "owner_church_id": 1
         },
         {
           "id": 3,
@@ -3853,7 +3856,8 @@ exports[`API responses match the recorded contract 1`] = `
           "artist": "Writer",
           "visibility": "public",
           "created_at": "<time>",
-          "username": "bob"
+          "username": "bob",
+          "owner_church_id": 1
         },
         {
           "id": 2,
@@ -3861,7 +3865,8 @@ exports[`API responses match the recorded contract 1`] = `
           "artist": "Writer",
           "visibility": "private",
           "created_at": "<time>",
-          "username": "alice"
+          "username": "alice",
+          "owner_church_id": 1
         }
       ]
     }
@@ -3921,7 +3926,8 @@ exports[`API responses match the recorded contract 1`] = `
           "artist": "Writer",
           "visibility": "public",
           "created_at": "<time>",
-          "username": "alice"
+          "username": "alice",
+          "owner_church_id": 1
         },
         {
           "id": 5,
@@ -3929,7 +3935,8 @@ exports[`API responses match the recorded contract 1`] = `
           "artist": "Writer",
           "visibility": "private",
           "created_at": "<time>",
-          "username": "bob"
+          "username": "bob",
+          "owner_church_id": 1
         },
         {
           "id": 4,
@@ -3937,7 +3944,8 @@ exports[`API responses match the recorded contract 1`] = `
           "artist": "Writer",
           "visibility": "public",
           "created_at": "<time>",
-          "username": "bob"
+          "username": "bob",
+          "owner_church_id": 1
         },
         {
           "id": 3,
@@ -3945,7 +3953,8 @@ exports[`API responses match the recorded contract 1`] = `
           "artist": "Writer",
           "visibility": "public",
           "created_at": "<time>",
-          "username": "bob"
+          "username": "bob",
+          "owner_church_id": 1
         },
         {
           "id": 2,
@@ -3953,7 +3962,8 @@ exports[`API responses match the recorded contract 1`] = `
           "artist": "Writer",
           "visibility": "private",
           "created_at": "<time>",
-          "username": "alice"
+          "username": "alice",
+          "owner_church_id": 1
         }
       ]
     }
@@ -8691,7 +8701,8 @@ exports[`API responses match the recorded contract 5`] = `
           "artist": "",
           "visibility": "private",
           "created_at": "<time>",
-          "username": "admin"
+          "username": "admin",
+          "owner_church_id": 1
         },
         {
           "id": 11,
@@ -8699,7 +8710,8 @@ exports[`API responses match the recorded contract 5`] = `
           "artist": "",
           "visibility": "private",
           "created_at": "<time>",
-          "username": "admin"
+          "username": "admin",
+          "owner_church_id": 1
         },
         {
           "id": 10,
@@ -8707,7 +8719,8 @@ exports[`API responses match the recorded contract 5`] = `
           "artist": "",
           "visibility": "public",
           "created_at": "<time>",
-          "username": "bob"
+          "username": "bob",
+          "owner_church_id": 1
         },
         {
           "id": 9,
@@ -8715,7 +8728,8 @@ exports[`API responses match the recorded contract 5`] = `
           "artist": "",
           "visibility": "public",
           "created_at": "<time>",
-          "username": "alice"
+          "username": "alice",
+          "owner_church_id": 1
         },
         {
           "id": 8,
@@ -8723,7 +8737,8 @@ exports[`API responses match the recorded contract 5`] = `
           "artist": "",
           "visibility": "private",
           "created_at": "<time>",
-          "username": "alice"
+          "username": "alice",
+          "owner_church_id": 1
         }
       ]
     }
@@ -8783,7 +8798,8 @@ exports[`API responses match the recorded contract 5`] = `
           "artist": "",
           "visibility": "private",
           "created_at": "<time>",
-          "username": "admin"
+          "username": "admin",
+          "owner_church_id": 1
         },
         {
           "id": 11,
@@ -8791,7 +8807,8 @@ exports[`API responses match the recorded contract 5`] = `
           "artist": "",
           "visibility": "private",
           "created_at": "<time>",
-          "username": "admin"
+          "username": "admin",
+          "owner_church_id": 1
         },
         {
           "id": 10,
@@ -8799,7 +8816,8 @@ exports[`API responses match the recorded contract 5`] = `
           "artist": "",
           "visibility": "public",
           "created_at": "<time>",
-          "username": "bob"
+          "username": "bob",
+          "owner_church_id": 1
         },
         {
           "id": 9,
@@ -8807,7 +8825,8 @@ exports[`API responses match the recorded contract 5`] = `
           "artist": "",
           "visibility": "public",
           "created_at": "<time>",
-          "username": "alice"
+          "username": "alice",
+          "owner_church_id": 1
         },
         {
           "id": 8,
@@ -8815,7 +8834,8 @@ exports[`API responses match the recorded contract 5`] = `
           "artist": "",
           "visibility": "private",
           "created_at": "<time>",
-          "username": "alice"
+          "username": "alice",
+          "owner_church_id": 1
         }
       ]
     }

@@ -10,6 +10,7 @@ export interface AdminStats {
     artist: string;
     username: string;
     created_at: string;
+    owner_church_id?: number | null;
   }[];
 }
 
@@ -20,6 +21,8 @@ export interface AdminUser {
   disabled: boolean;
   song_count: number;
   created_at: string;
+  church_id?: number | null;
+  church_name?: string | null;
 }
 
 export interface InactiveSong {
@@ -36,12 +39,13 @@ export interface HistoryEntry {
   created_at: string;
   actor_name: string;
   action: string;
-  target_type: 'song' | 'user';
+  target_type: 'song' | 'user' | 'church';
   target_id: number | null;
   target_name: string;
   details: Record<string, unknown> | null;
   has_snapshot: boolean;
   snapshot?: string | null;
+  church_name?: string | null;
 }
 
 export interface HistoryPage {
@@ -56,6 +60,17 @@ export interface InviteCode {
   code: string;
   created_at: string;
   used_at: string | null;
+  role?: string;
+  church_id?: number | null;
+  church_name?: string | null;
+}
+
+export interface Church {
+  id: number;
+  name: string;
+  created_at: string;
+  member_count: number;
+  super_admin: string | null;
 }
 
 export interface AdminConfig {

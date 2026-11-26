@@ -21,6 +21,7 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   'user.unblocked': { label: 'Unblocked', color: 'teal' },
   'user.role': { label: 'Role changed', color: 'blue' },
   'user.deleted': { label: 'User deleted', color: 'red' },
+  'church.added': { label: 'Church added', color: 'grape' },
 };
 
 const FIELD_NAMES: Record<string, string> = {
@@ -65,7 +66,7 @@ function HistoryRow({ entry }: { entry: HistoryEntry }) {
         <Box flex={1} miw={0}>
           <Text fw={600} fz={15} truncate>{entry.target_name || '(no name)'}</Text>
           <Text fz={13} c="dimmed">
-            {entry.actor_name ? `@${entry.actor_name}` : 'system'} &middot; {parseDbTime(entry.created_at).toLocaleString()}
+            {entry.church_name ? <>{entry.church_name} &middot; </> : null}{entry.actor_name ? `@${entry.actor_name}` : 'system'} &middot; {parseDbTime(entry.created_at).toLocaleString()}
             {detail ? <> &middot; {detail}</> : null}
           </Text>
         </Box>

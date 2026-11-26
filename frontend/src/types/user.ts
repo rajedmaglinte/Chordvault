@@ -3,6 +3,8 @@ export interface User {
   username: string;
   role: string;
   token: string;
+  church_id?: number | null;
+  church_name?: string | null;
 }
 
 export interface AuthConfig {
@@ -17,4 +19,6 @@ export interface AuthResponse {
   username: string;
   role: string;
   token: string;
+  church_id?: number | null;
+  church_name?: string | null;
 }

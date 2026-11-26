@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
+import { createContext, useEffect, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
 import type { User } from '../types';
 import { getStoredUser, setStoredUser, removeStoredUser, clearSearchSession, USER_STORAGE_KEY } from '../lib/storage';
 import { isAdminRole } from '../lib/constants';
@@ -47,6 +47,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (event.key === USER_STORAGE_KEY || event.key === null) syncStoredUser();
   });
   useWindowEvent('focus', syncStoredUser);
+
+  // Role and church can change after sign-in (a promotion, a new church): refresh them once per session.
+  const userId = user?.id;
+  const token = user?.token;
+  useEffect(() => {
+    if (!userId || !token || typeof fetch !== 'function') return;
+    let cancelled = false;
+    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => (r.ok ? r.json() : null))
+      .then((me: Partial<User> | null) => {
+        if (cancelled || !me || me.id !== userId) return;
+        const current = getStoredUser();
+        if (!current || current.id !== userId) return;
+        if (current.role === me.role && current.church_id === me.church_id && current.church_name === me.church_name) return;
+        const next = { ...current, role: me.role ?? current.role, church_id: me.church_id ?? null, church_name: me.church_name ?? null };
+        setStoredUser(next);
+        setUser(next);
+      })
+      .catch(() => { /* offline or server unreachable: keep the stored account */ });
+    return () => { cancelled = true; };
+  }, [userId, token]);
 
   const isAdmin = useMemo(() => user ? isAdminRole(user.role) : false, [user]);
 

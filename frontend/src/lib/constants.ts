@@ -1,6 +1,6 @@
 import shared from '../../../shared/public-constants.json';
 
-export { ROLES, STATUS, VISIBILITY, isAdminRole, isSuperAdmin, ROLE_LABELS, normalizeVisibility, manageUserError } from '../../../shared/access.mjs';
+export { ROLES, STATUS, VISIBILITY, isAdminRole, isSuperAdmin, isSiteOwner, sameChurch, assignableRoles, ROLE_LABELS, normalizeVisibility, manageUserError } from '../../../shared/access.mjs';
 export type { Visibility } from '../../../shared/access.mjs';
 
 export const DEFAULT_TAGS: string[] = shared.DEFAULT_TAGS;

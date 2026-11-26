@@ -6,6 +6,7 @@ vi.mock('../../hooks/useApi', () => ({ useApi: () => api }));
 vi.mock('../../context/DemoContext', () => ({ useDemo: () => demo }));
 vi.mock('../../context/I18nContext', () => ({ useI18n: () => ({ t: (k: string) => k, tReplace: (k: string) => k }) }));
 vi.mock('../../lib/notifications', () => ({ showStatusNotification: toast }));
+vi.mock('../../context/AuthContext', () => ({ useAuth: () => ({ user: { id: 1, username: 'boss', role: 'owner', token: 't', church_id: 1, church_name: 'My Church' }, isAdmin: true }) }));
 
 const invite = (id: number, code: string, used_at: string | null = null) => ({ id, code, created_at: '2026-01-01', used_at });
 let invites: ReturnType<typeof invite>[];

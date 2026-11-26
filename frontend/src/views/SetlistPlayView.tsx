@@ -1,6 +1,7 @@
 import { Alert, Button, Box, Text } from '@mantine/core';
 import { IconLock } from '@tabler/icons-react';
 import { useOffline } from '../context/OfflineContext';
+import { isSiteOwner } from '../lib/constants';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
@@ -72,7 +73,9 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
   // Live session: the leader's taps move everyone's screen. Public, server-backed setlists only.
   const liveEnabled = !!setlist && !setlist.isLocal && setlist.visibility !== 'private' && online;
   const live = useLiveSession({ setlistId, enabled: liveEnabled, token: user?.token });
-  const canLead = !!user && liveEnabled && (!!isOwner || isAdmin);
+  const ownerChurch = (setlist as { owner_church_id?: number | null } | null)?.owner_church_id;
+  const churchLeader = isAdmin && (isSiteOwner(user?.role) || ownerChurch == null || ownerChurch === user?.church_id);
+  const canLead = !!user && liveEnabled && (!!isOwner || churchLeader);
   const syncing = !!live.remote?.active && live.following && !live.leading;
   const [keepScreenOn, setKeepScreenOn] = useLocalStorage({ key: 'cv_keep_screen_on', defaultValue: true, getInitialValueInEffect: false });
   const wakeLock = useWakeLock(keepScreenOn && !!setlist);

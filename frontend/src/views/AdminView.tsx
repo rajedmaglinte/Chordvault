@@ -1,4 +1,4 @@
-import { Badge, Box, Button, Group } from '@mantine/core';
+import { Badge, Box, Button, Group, NativeSelect } from '@mantine/core';
 import { SectionTitle } from '../components/SectionTitle';
 import { ListCard } from '../components/ListCard';
 import { CardGrid } from '../components/CardGrid';
@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
 import { showStatusNotification as toast } from '../lib/notifications';
 import { Loading } from '../components/Loading';
-import type { AdminStats, AdminUser, Correction } from '../types';
+import type { AdminStats, AdminUser, Correction, Church } from '../types';
 import { languageName } from '../lib/languages';
 import { PageTitle } from '../components/PageTitle';
 import { AdminTags } from '../components/AdminTags';
@@ -19,9 +19,10 @@ import { AdminInvites } from '../components/AdminInvites';
 import { AdminUserCard } from '../components/AdminUserCard';
 import { AdminInactiveSongs } from '../components/AdminInactiveSongs';
 import { AdminHistory } from '../components/AdminHistory';
+import { AdminChurches } from '../components/AdminChurches';
 import { StatCard } from '../components/StatCard';
 import { StatGrid } from '../components/StatGrid';
-import { ROLES, ROLE_LABELS } from '../lib/constants';
+import { ROLES, ROLE_LABELS, isSiteOwner } from '../lib/constants';
 import { formatDbDate } from '../lib/format';
 import type { Navigate } from '../lib/routes';
 
@@ -38,17 +39,23 @@ export function AdminView({ navigate }: AdminViewProps) {
   const [corrections, setCorrections] = useState<Correction[]>([]);
   const { busy, run: runAction } = useBusyAction();
   const [reloads, setReloads] = useState(0);
+  const [churches, setChurches] = useState<Church[]>([]);
+  const owner = isSiteOwner(user?.role);
+  // The owner may look at one church at a time; '' means all churches.
+  const [churchFilter, setChurchFilter] = useState('');
 
   const load = useCallback(async () => {
     try {
+      const scope = churchFilter ? `?church=${churchFilter}` : '';
       const [s, u, c] = await Promise.all([
-        apiCall<AdminStats>('GET', '/api/admin/stats'),
-        apiCall<AdminUser[]>('GET', '/api/admin/users'),
-        apiCall<Correction[]>('GET', '/api/admin/corrections'),
+        apiCall<AdminStats>('GET', `/api/admin/stats${scope}`),
+        apiCall<AdminUser[]>('GET', `/api/admin/users${scope}`),
+        apiCall<Correction[]>('GET', `/api/admin/corrections${scope}`),
       ]);
       setStats(s); setUsers(u); setCorrections(c); setReloads(n => n + 1);
+      apiCall<Church[]>('GET', '/api/admin/churches').then(list => setChurches(Array.isArray(list) ? list : [])).catch(() => {});
     } catch (e) { notifyError(e); navigate('my-songs', {}, { leave: true }); }
-  }, [apiCall, navigate]);
+  }, [apiCall, navigate, churchFilter]);
 
   useEffect(() => {
     if (!isAdmin) { navigate('my-songs', {}, { leave: true }); return; }
@@ -63,9 +70,12 @@ export function AdminView({ navigate }: AdminViewProps) {
     }));
 
   const setRole = (userId: number, role: string) => {
-    const promote = role === ROLES.ADMIN;
-    confirmThenReload(promote ? t('admin.confirmPromote') : t('admin.confirmDemote'),
-      () => apiCall('PUT', `/api/admin/users/${userId}/role`, { role }), promote ? t('admin.userPromoted') : t('admin.userDemoted'));
+    const target = users.find(u => u.id === userId);
+    const promote = role === ROLES.CHURCH_OWNER || (role === ROLES.ADMIN && target?.role === ROLES.USER);
+    const message = role === ROLES.CHURCH_OWNER
+      ? `Make @${target?.username ?? 'this user'} the super admin of ${target?.church_name ?? 'their church'}? They can then manage admins and delete that church's songs and users.`
+      : promote ? t('admin.confirmPromote') : t('admin.confirmDemote');
+    confirmThenReload(message, () => apiCall('PUT', `/api/admin/users/${userId}/role`, { role }), promote ? t('admin.userPromoted') : t('admin.userDemoted'));
   };
 
   const setDisabled = (userId: number, disabled: boolean) => confirmThenReload(disabled ? t('admin.confirmDisable') : t('admin.confirmEnable'),
@@ -89,7 +99,7 @@ export function AdminView({ navigate }: AdminViewProps) {
     <>
       <Group justify="space-between" mb="lg">
         <PageTitle className="view-title">{t('admin.title')}</PageTitle>
-        {user && <Badge size="lg" variant="light">{ROLE_LABELS[user.role]}</Badge>}
+        {user && <Badge size="lg" variant="light">{ROLE_LABELS[user.role]}{!owner && user.church_name ? ` \u00b7 ${user.church_name}` : ''}</Badge>}
       </Group>
       <StatGrid>
         <StatCard value={stats.userCount} label={t('admin.users')} />
@@ -109,15 +119,23 @@ export function AdminView({ navigate }: AdminViewProps) {
         </Box>
       )}
 
-      <AdminInvites refreshKey={users} />
+      {owner && <AdminChurches churches={churches} onChanged={() => void load()} />}
 
-      <AdminTags />
+      <AdminInvites refreshKey={users} churches={churches} />
 
-      <SectionTitle>{t('admin.users')}</SectionTitle>
+      {owner && <AdminTags />}
+
+      <Group justify="space-between" align="flex-end" mb={4}>
+        <SectionTitle>{t('admin.users')}</SectionTitle>
+        {owner && churches.length > 1 && (
+          <NativeSelect size="xs" aria-label="Show church" value={churchFilter} onChange={e => setChurchFilter(e.currentTarget.value)}
+            data={[{ value: '', label: 'All churches' }, ...churches.map(c => ({ value: String(c.id), label: c.name }))]} />
+        )}
+      </Group>
 
       <CardGrid mb={28}>
         {users.map((u) => (
-          <AdminUserCard key={u.id} target={u} actor={user} busy={busy}
+          <AdminUserCard key={u.id} target={u} actor={user} busy={busy} showChurch={owner && churches.length > 1}
             onSetRole={setRole} onResetPassword={resetPassword} onSetDisabled={setDisabled} onDelete={deleteUser} />
         ))}
       </CardGrid>
@@ -132,7 +150,9 @@ export function AdminView({ navigate }: AdminViewProps) {
                 title={s.title}
                 meta={<>{s.artist ? `${s.artist} · ` : ''}@{s.username} &middot; {formatDbDate(s.created_at)}</>}
                 onClick={() => navigate('song-view', { id: String(s.id) })}
-                actions={<Button color="orange" variant="light" size="xs" disabled={busy} onClick={(e) => { e.stopPropagation(); deactivateSong(s.id, s.title); }}>{t('admin.deactivate')}</Button>}
+                actions={owner || s.owner_church_id === user?.church_id
+                  ? <Button color="orange" variant="light" size="xs" disabled={busy} onClick={(e) => { e.stopPropagation(); deactivateSong(s.id, s.title); }}>{t('admin.deactivate')}</Button>
+                  : undefined}
               />
             ))}
           </CardGrid>

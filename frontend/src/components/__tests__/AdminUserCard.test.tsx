@@ -6,14 +6,15 @@ const { demo } = vi.hoisted(() => ({ demo: { demoMode: false } }));
 vi.mock('../../context/DemoContext', () => ({ useDemo: () => demo }));
 vi.mock('../../context/I18nContext', () => ({ useI18n: () => ({ t: (k: string) => k, tReplace: (k: string) => k }) }));
 
-const owner: User = { id: 1, username: 'boss', role: 'owner', token: 't' };
-const admin: User = { id: 5, username: 'helper', role: 'admin', token: 't' };
-const member: AdminUser = { id: 2, username: 'member', role: 'user', disabled: false, song_count: 3, created_at: '2026-01-01' };
+const owner: User = { id: 1, username: 'boss', role: 'owner', token: 't', church_id: 1 };
+const admin: User = { id: 5, username: 'helper', role: 'admin', token: 't', church_id: 1 };
+const superAdmin: User = { id: 6, username: 'lead', role: 'church_owner', token: 't', church_id: 1 };
+const member: AdminUser = { id: 2, username: 'member', role: 'user', disabled: false, song_count: 3, created_at: '2026-01-01', church_id: 1, church_name: 'My Church' };
 const handlers = { onSetRole: vi.fn(), onResetPassword: vi.fn(), onSetDisabled: vi.fn(), onDelete: vi.fn() };
 
 beforeEach(() => { demo.demoMode = false; Object.values(handlers).forEach(h => h.mockReset()); });
-const renderCard = (target: AdminUser, actor: User | null = owner) =>
-  render(<AdminUserCard target={target} actor={actor} busy={false} {...handlers} />);
+const renderCard = (target: AdminUser, actor: User | null = owner, showChurch = false) =>
+  render(<AdminUserCard target={target} actor={actor} busy={false} showChurch={showChurch} {...handlers} />);
 
 it('passes the target to each action', () => {
   renderCard(member);
@@ -70,4 +71,23 @@ it('labels your own card', () => {
   renderCard({ ...member, id: 1, username: 'boss' });
   expect(screen.getByText(/admin\.you/)).toBeInTheDocument();
   expect(screen.getByText('@boss', { exact: false })).toBeInTheDocument();
+});
+
+it('the owner can make someone a church super admin and sees their church', () => {
+  renderCard({ ...member, church_name: 'Grace Church', church_id: 2 }, owner, true);
+  expect(screen.getByText(/Grace Church/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Make church super admin' }));
+  expect(handlers.onSetRole).toHaveBeenCalledExactlyOnceWith(2, 'church_owner');
+});
+
+it('a church super admin promotes and deletes in their church, but cannot make super admins', () => {
+  renderCard({ ...member, role: 'admin' }, superAdmin);
+  expect(screen.getByRole('button', { name: 'admin.demote' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'admin.deleteForever' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Make church super admin' })).not.toBeInTheDocument();
+});
+
+it('shows no actions for someone in another church', () => {
+  renderCard({ ...member, church_id: 2 }, superAdmin);
+  expect(screen.queryAllByRole('button')).toHaveLength(0);
 });

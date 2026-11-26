@@ -53,6 +53,12 @@ function createAuthRouter() {
     res.json(sessionResponse(logJoined(await createAccount(username, password, (name, hash) => User.register(name, hash, assertCanRegister)), 'registration')));
   });
 
+  // The signed-in account as it is now (role and church may have changed since sign-in).
+  router.get('/me', requireAuth, (req, res) => {
+    const { id, username, role, church_id, church_name } = req.user;
+    res.json({ id, username, role, church_id, church_name });
+  });
+
   router.post('/login', async (req, res) => {
     const { username, password } = req.body;
     if (typeof username !== 'string' || typeof password !== 'string') throw new AppError(CREDENTIALS_REQUIRED, 400);

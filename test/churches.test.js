@@ -87,6 +87,13 @@ test('a second church joins, shares public songs and stays separate otherwise', 
   assert.ok(all.includes('Grace song') && all.includes('Shared') && all.includes('Grace Church'));
 });
 
+test('/api/auth/me reports the current role and church', async (t) => {
+  const call = await serve(t, mount);
+  const me = await json(await call('/api/auth/me', { token: leader.token }));
+  assert.deepEqual({ role: me.body.role, church: me.body.church_name }, { role: 'admin', church: 'My Church' });
+  assert.equal((await call('/api/auth/me')).status, 401);
+});
+
 test('existing accounts are placed in the first church', () => {
   const orphans = db.prepare('SELECT COUNT(*) AS n FROM users WHERE church_id IS NULL').get().n;
   assert.equal(orphans, 0);
