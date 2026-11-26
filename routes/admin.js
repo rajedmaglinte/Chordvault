@@ -4,11 +4,12 @@ const { setSetting, isRegistrationAllowed } = require('../lib/db');
 const User = require('../lib/models/user');
 const Song = require('../lib/models/song');
 const Invite = require('../lib/models/invite');
+const Church = require('../lib/models/church');
 const { requireAuth, requireAdmin, createAccount, setPassword } = require('../lib/auth');
 const { validateObjectBody, requireId, assertValid, validateUserCredentials, validatePassword, validateBoolean, validateTagList } = require('../lib/validation');
 const { AppError, requireFound, requireChanged } = require('../lib/errors');
 const { ROLES, SETTING_KEYS } = require('../lib/constants');
-const { manageUserError, isSuperAdmin } = require('../shared/access.mjs');
+const { manageUserError, isSuperAdmin, isSiteOwner, assignableRoles, ROLE_LABELS } = require('../shared/access.mjs');
 const Activity = require('../lib/models/activity');
 const { removeSong, setSongActive } = require('../lib/songRemoval');
 const Tags = require('../lib/models/tags');
@@ -27,8 +28,33 @@ function requireSuperAdmin(req, _res, next) {
   next();
 }
 
+function requireSiteOwner(req, _res, next) {
+  if (!isSiteOwner(req.user.role)) throw new AppError('Only the owner can do this', 403);
+  next();
+}
+
+/** Which church an admin request is about: the owner may pick one (?church= or body.church_id), everyone else is their own. */
+function churchScope(req, requested) {
+  if (!isSiteOwner(req.user.role)) return req.user.church_id;
+  const id = Number(requested);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+/** The church a new account or invite goes to; the owner may choose, others use their own. */
+function targetChurch(req) {
+  const id = churchScope(req, req.body?.church_id) ?? req.user.church_id;
+  requireFound(Church.find(id), 'Church not found');
+  return id;
+}
+
+function assertMayGiveRole(req, role) {
+  if (!assignableRoles(req.user).includes(role)) {
+    throw new AppError(`You cannot make someone ${ROLE_LABELS[role] ? `a ${ROLE_LABELS[role]}` : 'that role'}`, 403);
+  }
+}
+
 const findSongForAdmin = raw => requireFound(Song.findById(requireId(raw, 'Invalid song ID')), 'Song not found');
-const userTarget = target => ({ type: 'user', id: target.id, name: target.username });
+const userTarget = target => ({ type: 'user', id: target.id, name: target.username, churchId: target.church_id });
 
 function createAdminRouter() {
   const router = express.Router();
@@ -36,7 +62,8 @@ function createAdminRouter() {
   router.use('/admin', requireAuth, requireAdmin);
 
   router.get('/admin/stats', (req, res) => {
-    const userCount = User.count().count;
+    const scope = churchScope(req, req.query.church);
+    const userCount = scope == null ? User.count().count : User.countInChurch(scope);
     const songCount = Song.count();
     const pendingCount = Song.countPending();
     const recentUsers = User.getRecent(5);
@@ -47,16 +74,15 @@ function createAdminRouter() {
   });
 
   router.get('/admin/users', (req, res) => {
-    const users = User.listWithSongCount();
-    res.json(users);
+    res.json(User.listWithSongCount(churchScope(req, req.query.church)));
   });
 
   router.put('/admin/users/:id/role', blockInDemo, (req, res) => {
     const { role } = req.body;
     const resolved = resolveAdminTarget(req);
 
-    if (role === ROLES.ADMIN && req.user.role !== ROLES.OWNER) throw new AppError('Only the owner can promote or demote admins', 403);
-    if (role !== ROLES.USER && role !== ROLES.ADMIN) throw new AppError('Role must be "user" or "admin"', 400);
+    if (![ROLES.USER, ROLES.ADMIN, ROLES.CHURCH_OWNER].includes(role)) throw new AppError('Role must be "user", "admin" or "church_owner"', 400);
+    assertMayGiveRole(req, role);
 
     User.updateRole(resolved.targetId, role);
     Activity.log(req.user, Activity.ACTIONS.USER_ROLE, { ...userTarget(resolved.target), details: { from: resolved.target.role, to: role } });
@@ -84,7 +110,8 @@ function createAdminRouter() {
   router.post('/admin/users', blockInDemo, async (req, res) => {
     const { username, password } = req.body;
     assertValid(validateUserCredentials(username, password));
-    const { id, username: name } = await createAccount(username, password, (trimmed, hash) => User.create(trimmed, hash, ROLES.USER));
+    const churchId = targetChurch(req);
+    const { id, username: name } = await createAccount(username, password, (trimmed, hash) => User.create(trimmed, hash, ROLES.USER, churchId));
     Activity.log(req.user, Activity.ACTIONS.USER_ADDED, { type: 'user', id, name });
     res.json({ id, username: name });
   });
@@ -93,7 +120,7 @@ function createAdminRouter() {
   router.delete('/admin/users/:id', blockInDemo, (req, res) => {
     const { targetId, target } = resolveAdminTarget(req);
     requireSuperAdmin(req, res, () => {});
-    const songCount = User.listWithSongCount().find(u => u.id === targetId)?.song_count ?? 0;
+    const songCount = User.listWithSongCount(target.church_id ?? null).find(u => u.id === targetId)?.song_count ?? 0;
     User.delete(targetId);
     Activity.log(req.user, Activity.ACTIONS.USER_DELETED, { ...userTarget(target), details: { songs: songCount } });
     res.json({ success: true });
@@ -104,7 +131,7 @@ function createAdminRouter() {
     res.json({ success: true, result: removeSong(req.user, findSongForAdmin(req.params.id)) });
   });
 
-  router.get('/admin/songs/inactive', (_req, res) => res.json(Song.listInactive()));
+  router.get('/admin/songs/inactive', (req, res) => res.json(Song.listInactive(churchScope(req, req.query.church))));
 
   router.put('/admin/songs/:id/active', (req, res) => {
     const { active } = req.body;
@@ -118,32 +145,39 @@ function createAdminRouter() {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
     const type = ['song', 'user'].includes(req.query.type) ? req.query.type : null;
     const q = typeof req.query.q === 'string' ? req.query.q.slice(0, 100) : '';
-    res.json(Activity.list({ type, q, page, limit }));
+    res.json(Activity.list({ type, q, page, limit, churchId: churchScope(req, req.query.church) }));
   });
 
   router.get('/admin/history/:id', (req, res) => {
-    res.json(requireFound(Activity.get(requireId(req.params.id, 'Invalid history ID')), 'History entry not found'));
+    const entry = requireFound(Activity.get(requireId(req.params.id, 'Invalid history ID')), 'History entry not found');
+    if (!isSiteOwner(req.user.role) && entry.church_id !== req.user.church_id) throw new AppError('History entry not found', 404);
+    res.json(entry);
   });
 
   router.post('/admin/invites', blockInDemo, (req, res) => {
+    const role = req.body?.role || ROLES.USER;
+    if (![ROLES.USER, ROLES.ADMIN, ROLES.CHURCH_OWNER].includes(role)) throw new AppError('Invalid role', 400);
+    assertMayGiveRole(req, role);
+    const churchId = targetChurch(req);
     const code = crypto.randomBytes(8).toString('hex');
-    Invite.create(code, req.user.id);
-    res.json({ code });
+    Invite.create(code, req.user.id, churchId, role);
+    res.json({ code, role, church_id: churchId });
   });
 
   router.get('/admin/invites', (req, res) => {
-    const invites = Invite.list();
-    res.json(invites);
+    res.json(Invite.list(churchScope(req, req.query.church)));
   });
 
   router.delete('/admin/invites/:id', blockInDemo, (req, res) => {
-    requireChanged(Invite.deleteUnused(requireId(req.params.id, 'Invalid invite ID')), 'Invite not found or already used');
+    const id = requireId(req.params.id, 'Invalid invite ID');
+    const invite = Invite.findById(id);
+    if (invite && !isSiteOwner(req.user.role) && invite.church_id !== req.user.church_id) throw new AppError('Invite not found or already used', 404);
+    requireChanged(Invite.deleteUnused(id), 'Invite not found or already used');
     res.json({ success: true });
   });
 
   router.get('/admin/corrections', (req, res) => {
-    const corrections = Song.getPendingCorrections();
-    res.json(corrections);
+    res.json(Song.getPendingCorrections(churchScope(req, req.query.church)));
   });
 
   router.get('/admin/config', (req, res) => {
@@ -152,23 +186,47 @@ function createAdminRouter() {
 
   router.get('/admin/tags', (_req, res) => res.json(Tags.withUsage()));
 
-  router.put('/admin/tags', blockInDemo, (req, res) => {
+  router.put('/admin/tags', blockInDemo, requireSiteOwner, (req, res) => {
     const { tags, error } = validateTagList(req.body.tags);
     assertValid(error);
     Tags.saveTags(tags);
     res.json(Tags.withUsage());
   });
 
-  router.delete('/admin/tags', blockInDemo, (_req, res) => {
+  router.delete('/admin/tags', blockInDemo, requireSiteOwner, (_req, res) => {
     Tags.resetTags();
     res.json(Tags.withUsage());
   });
 
-  router.put('/admin/config', blockInDemo, (req, res) => {
+  router.put('/admin/config', blockInDemo, requireSiteOwner, (req, res) => {
     const { allowRegistration } = req.body;
     assertValid(validateBoolean(allowRegistration, 'allowRegistration'));
     setSetting(SETTING_KEYS.ALLOW_REGISTRATION, allowRegistration ? '1' : '0');
     res.json({ success: true, allowRegistration });
+  });
+
+  // Churches: the owner adds them; a church super admin may rename their own.
+  router.get('/admin/churches', (req, res) => {
+    const all = Church.list();
+    res.json(isSiteOwner(req.user.role) ? all : all.filter(c => c.id === req.user.church_id));
+  });
+
+  router.post('/admin/churches', blockInDemo, requireSiteOwner, (req, res) => {
+    const church = Church.create(req.body?.name);
+    const code = crypto.randomBytes(8).toString('hex');
+    Invite.create(code, req.user.id, church.id, ROLES.CHURCH_OWNER);
+    Activity.log(req.user, Activity.ACTIONS.CHURCH_ADDED, { type: 'church', id: church.id, name: church.name, churchId: church.id });
+    res.json({ church, code });
+  });
+
+  router.put('/admin/churches/:id', blockInDemo, (req, res) => {
+    const id = requireId(req.params.id, 'Invalid church ID');
+    requireFound(Church.find(id), 'Church not found');
+    if (!isSiteOwner(req.user.role) && !(req.user.role === ROLES.CHURCH_OWNER && req.user.church_id === id)) {
+      throw new AppError('Only the owner or this church\'s super admin can rename it', 403);
+    }
+    Church.rename(id, req.body?.name);
+    res.json({ success: true });
   });
 
   return router;

@@ -4,8 +4,9 @@ const assert=require('node:assert/strict');
 const { db }=require('../lib/db');
 const Song=require('../lib/models/song');
 const Setlist=require('../lib/models/setlist');
-const owner=Number(db.prepare("INSERT INTO users (username,password_hash) VALUES ('paging','x')").run().lastInsertRowid);
-const other=Number(db.prepare("INSERT INTO users (username,password_hash) VALUES ('other','x')").run().lastInsertRowid);
+const church=require('../lib/models/church').defaultId();
+const owner=Number(db.prepare("INSERT INTO users (username,password_hash,church_id) VALUES ('paging','x',?)").run(church).lastInsertRowid);
+const other=Number(db.prepare("INSERT INTO users (username,password_hash,church_id) VALUES ('other','x',?)").run(church).lastInsertRowid);
 const insertSong=db.prepare('INSERT INTO songs (user_id,title,artist,content,language,visibility,updated_at) VALUES (?,?,?,?,?,?,?)');
 for(let i=0;i<105;i++) {
   insertSong.run(owner,`Grace ${i}`,'Writer','[C]恩典 Amazing grace','en','public',`2026-01-01 00:${String(Math.floor(i/60)).padStart(2,'0')}:${String(i%60).padStart(2,'0')}`);
@@ -21,7 +22,7 @@ for(const [name,list,key,count,unpaged] of [
   ['user public songs',o=>Song.listByUser(owner,o),'songs',105,105],
   ['public songs',o=>Song.listPublic(o),'songs',105,100],
   ['own setlists',o=>Setlist.listForUser(owner,o),'setlists',105,105],
-  ['public setlists',o=>Setlist.listPublic(o),'setlists',105,100],
+  ['public setlists',o=>Setlist.listPublic(o,church),'setlists',105,100],
 ]) test(`${name} preserves rows, order, pagination and unpaginated caps`,()=>{
   const all=list({});
   assert.ok(Array.isArray(all));
@@ -39,6 +40,6 @@ test('filtered empty results and language/date filters retain their metadata',()
   const chinese=Song.listForUser(owner,{language:'zh',page:1,limit:2});
   assert.equal(chinese.total,1);
   assert.equal(chinese.songs[0].title,'Private');
-  const dated=Setlist.listPublic({dateFrom:'2026-01-01',dateTo:'2026-01-01',page:1,limit:200});
+  const dated=Setlist.listPublic({dateFrom:'2026-01-01',dateTo:'2026-01-01',page:1,limit:200},church);
   assert.equal(dated.total,52);
 });

@@ -36,8 +36,10 @@ function createSetlistsRouter() {
     res.json({ id: result.lastInsertRowid, name: name.trim() });
   });
 
-  router.get('/setlists/public', validateListQuery, (req, res) => {
-    res.json(Setlist.listPublic(setlistListOptions(req.query)));
+  // Each church sees its own public setlists; signed-out visitors open them by link.
+  router.get('/setlists/public', optionalAuth, validateListQuery, (req, res) => {
+    // No church (signed out) matches no setlists, keeping the usual response shape.
+    res.json(Setlist.listPublic(setlistListOptions(req.query), req.user?.church_id ?? null));
   });
 
   router.get('/setlists/public/:id', optionalAuth, (req, res) => {

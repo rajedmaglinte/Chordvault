@@ -10,11 +10,15 @@ const { db } = require('../lib/db');
 const { createLiveRouter, closeLiveStreams } = require('../routes/live');
 const { errorHandler } = require('../lib/errors');
 
-const addUser = (name, role = 'user') =>
-  db.prepare('INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)').run(name, 'x', role).lastInsertRowid;
+const Church = require('../lib/models/church');
+const church = Church.defaultId();
+const otherChurch = Church.create('Other Church').id;
+const addUser = (name, role = 'user', churchId = church) =>
+  db.prepare('INSERT INTO users (username, password_hash, role, church_id) VALUES (?, ?, ?, ?)').run(name, 'x', role, churchId).lastInsertRowid;
 const leaderId = addUser('leader');
 const memberId = addUser('member');
 const adminId = addUser('boss', 'admin');
+const otherAdminId = addUser('elsewhere', 'admin', otherChurch);
 const publicId = db.prepare("INSERT INTO setlists (user_id, name, visibility) VALUES (?, 'Sunday', 'public')").run(leaderId).lastInsertRowid;
 const privateId = db.prepare("INSERT INTO setlists (user_id, name, visibility) VALUES (?, 'Mine', 'private')").run(leaderId).lastInsertRowid;
 const tokenFor = id => jwt.sign({ id }, process.env.JWT_SECRET);
@@ -81,6 +85,10 @@ test('a late joiner sees where the leader already is', async () => {
   assert.deepEqual([ev.active, ev.index, ev.section], [true, 3, -1]);
   f.close();
   await lead(publicId, { active: false });
+});
+
+test('an admin of another church may not lead', async () => {
+  assert.equal((await lead(publicId, { index: 0 }, otherAdminId)).status, 403);
 });
 
 test('only the owner or an admin may lead', async () => {

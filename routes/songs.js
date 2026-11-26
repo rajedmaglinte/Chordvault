@@ -1,6 +1,6 @@
 const express = require('express');
 const yazl = require('yazl');
-const { requireAuth, requireAdmin, optionalAuth, isAdminRole, canManageSong, viewerId } = require('../lib/auth');
+const { requireAuth, requireAdmin, optionalAuth, isAdminRole, viewerId } = require('../lib/auth');
 const { STATUS, LIMITS } = require('../lib/constants');
 const { validateListQuery, validateObjectBody, requireId, assertValid, validateSongInput, validateVisibility, validateSongMetadata, parsePaginationParams, songListOptions } = require('../lib/validation');
 const { AppError, requireFound } = require('../lib/errors');
@@ -9,7 +9,7 @@ const { makeUniqueNamer } = require('../lib/exportFilename');
 const Song = require('../lib/models/song');
 const User = require('../lib/models/user');
 const Tags = require('../lib/models/tags');
-const { canViewSongVisibility, familyRootId } = require('../lib/songAccess');
+const { canViewSongVisibility, canManageSongRow, familyRootId } = require('../lib/songAccess');
 const Activity = require('../lib/models/activity');
 const { removeSong } = require('../lib/songRemoval');
 const { splitTags } = require('../shared/tags.mjs');
@@ -45,8 +45,8 @@ function requireSongSave(body, options) {
   return saved;
 }
 
-function assertManagesCorrections(user, ownerId, action) {
-  if (!canManageSong(user, ownerId)) throw new AppError(`Only the song owner or admins can ${action} corrections`, 403);
+function assertManagesCorrections(user, song, action) {
+  if (!canManageSongRow(user, song)) throw new AppError(`Only the song owner or admins can ${action} corrections`, 403);
 }
 
 function findSong(rawId) {
@@ -59,7 +59,7 @@ function resolveCorrectionWithAuth(req) {
   const originalId = correction.parent_id;
   if (!originalId) throw new AppError('Correction has no parent song', 400);
   const original = requireFound(Song.findById(originalId), 'Original song not found');
-  assertManagesCorrections(req.user, original.user_id, 'manage');
+  assertManagesCorrections(req.user, original, 'manage');
   return { correction, original, originalId };
 }
 
@@ -113,7 +113,7 @@ function createSongsRouter() {
     const song = findSong(req.params.id);
     if (song.status === STATUS.PENDING) {
       const isOriginalOwner = req.user && song.parent_id && Song.findById(song.parent_id)?.user_id === req.user.id;
-      if (!canManageSong(req.user, song.user_id) && !isOriginalOwner) throw new AppError('Song not found', 404);
+      if (!canManageSongRow(req.user, song) && !isOriginalOwner) throw new AppError('Song not found', 404);
     }
     if (song.status === STATUS.INACTIVE && !isAdminRole(req.user?.role)) throw new AppError('Song not found', 404);
     if (!canViewSongVisibility(req.user, song)) throw new AppError('Song not found', 404);
@@ -170,7 +170,7 @@ function createSongsRouter() {
   router.put('/songs/:id', requireAuth, (req, res) => {
     const id = requireId(req.params.id, 'Invalid song ID');
     const existing = Song.findById(id);
-    if (!existing || !canManageSong(req.user, existing.user_id)) throw new AppError('Song not found or not yours', 404);
+    if (!existing || !canManageSongRow(req.user, existing)) throw new AppError('Song not found or not yours', 404);
     if (existing.status === STATUS.INACTIVE) throw new AppError('This song is deactivated. Reactivate it before editing.', 409);
     const { format_detected, visibility } = req.body;
     const { meta, content: finalContent } = requireSongSave(req.body, { fallbackContent: existing.content });
@@ -181,7 +181,7 @@ function createSongsRouter() {
     Song.update(id, meta, finalContent, finalVisibility, fmt);
     const fields = changedFields(existing, { ...meta, content: finalContent.trim(), visibility: finalVisibility });
     if (fields.length) {
-      Activity.log(req.user, Activity.ACTIONS.SONG_MODIFIED, { type: 'song', id, name: meta.title,
+      Activity.log(req.user, Activity.ACTIONS.SONG_MODIFIED, { type: 'song', id, name: meta.title, churchId: existing.owner_church_id,
         details: { fields, ...(meta.title !== existing.title ? { previousTitle: existing.title } : {}) }, snapshot: existing.content });
     }
     res.json({ success: true });
@@ -227,14 +227,14 @@ function createSongsRouter() {
 
   router.get('/songs/:id/corrections', requireAuth, (req, res) => {
     const song = findSong(req.params.id);
-    assertManagesCorrections(req.user, song.user_id, 'view');
+    assertManagesCorrections(req.user, song, 'view');
     res.json(Song.getCorrections(familyRootId(song)));
   });
 
   router.put('/corrections/:id/approve', requireAuth, (req, res) => {
     const { correction, original, originalId } = resolveCorrectionWithAuth(req);
     Song.approveCorrection(correction.id, originalId, correction.content);
-    Activity.log(req.user, Activity.ACTIONS.SONG_MODIFIED, { type: 'song', id: originalId, name: original.title,
+    Activity.log(req.user, Activity.ACTIONS.SONG_MODIFIED, { type: 'song', id: originalId, name: original.title, churchId: original.owner_church_id,
       details: { fields: ['content'], correctionBy: correction.username }, snapshot: original.content });
     res.json({ success: true });
   });

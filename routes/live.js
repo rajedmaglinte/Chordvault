@@ -4,7 +4,7 @@ const { requireAuth } = require('../lib/auth');
 const { AppError, requireFound } = require('../lib/errors');
 const { requireId } = require('../lib/validation');
 const Setlist = require('../lib/models/setlist');
-const { isAdminRole } = require('../shared/access.mjs');
+const { isAdminRole, isSiteOwner } = require('../shared/access.mjs');
 
 /*
  * Live setlist sessions: a leader sends "song N, section M" and every device
@@ -97,8 +97,9 @@ function createLiveRouter() {
   router.post('/:id', (req, res, next) => (limitsOn() ? leadLimiter(req, res, next) : next()), requireAuth, (req, res) => {
     const id = requireSetlistId(req.params.id);
     const setlist = findLiveSetlist(id);
-    if (setlist.user_id !== req.user.id && !isAdminRole(req.user.role)) {
-      throw new AppError('Only the setlist owner or an admin can lead', 403);
+    const churchLeader = isAdminRole(req.user.role) && req.user.church_id != null && req.user.church_id === setlist.owner_church_id;
+    if (setlist.user_id !== req.user.id && !churchLeader && !isSiteOwner(req.user.role)) {
+      throw new AppError('Only the setlist owner or an admin of that church can lead', 403);
     }
     const body = req.body || {};
     const s = sessionFor(id);

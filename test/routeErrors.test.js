@@ -85,7 +85,7 @@ test('admin routes keep their target, id and password errors', async t => {
     ['/api/admin/users/abc/role', { ...admin, method: 'PUT', body: { role: 'user' } }, 400, 'Invalid user ID'],
     ['/api/admin/users/999999/disabled', { ...admin, method: 'PUT', body: { disabled: true } }, 404, 'User not found'],
     [`/api/admin/users/${siteOwner.id}`, { ...admin, method: 'DELETE' }, 403, 'Cannot modify the owner'],
-    [`/api/admin/users/${admin.id}/disabled`, { ...admin, method: 'PUT', body: { disabled: true } }, 403, 'Only the owner can manage admins'],
+    [`/api/admin/users/${admin.id}/disabled`, { ...admin, method: 'PUT', body: { disabled: true } }, 403, 'Only a super admin can manage admins'],
     [`/api/admin/users/${other.id}/password`, { ...admin, method: 'PUT', body: { password: 'short' } }, 400, 'Password must be at least 6 characters'],
     [`/api/admin/users/${other.id}/password`, { ...admin, method: 'PUT', body: { password: 123456 } }, 400, 'Password must be at least 6 characters'],
     ['/api/admin/songs/abc', { ...admin, method: 'DELETE' }, 400, 'Invalid song ID'],

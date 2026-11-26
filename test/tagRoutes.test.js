@@ -4,7 +4,8 @@ const { db, user, serve } = require('./helpers/app');
 const { createSongsRouter } = require('../routes/songs');
 const { createAdminRouter } = require('../routes/admin');
 const { DEFAULT_TAGS } = require('../shared/public-constants.json');
-const admin = user('tag-routes-admin', 'admin');
+const admin = user('tag-routes-owner', 'owner');
+const churchAdmin = user('tag-routes-admin', 'admin');
 const member = user('tag-routes-member');
 test.after(() => db.close());
 const mount = app => { app.use('/api', createSongsRouter()); app.use('/api', createAdminRouter()); };
@@ -30,6 +31,8 @@ test('invalid lists and non-admins are rejected without saving', async t => {
   assert.equal(bad.status, 400);
   assert.deepEqual(await bad.json(), { error: 'Tag names cannot contain commas or braces' });
   assert.equal((await request('/api/admin/tags', { ...member, method: 'PUT', body: { tags: ['x'] } })).status, 403);
+  // Tags are shared by every church, so only the site owner edits them.
+  assert.equal((await request('/api/admin/tags', { ...churchAdmin, method: 'PUT', body: { tags: ['x'] } })).status, 403);
   assert.equal((await request('/api/admin/tags', { method: 'DELETE' })).status, 401);
   assert.equal((await request('/api/admin/tags', member)).status, 403);
   assert.deepEqual(await (await request('/api/tags')).json(), { tags: DEFAULT_TAGS });
