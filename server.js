@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const compression = require('compression');
 const path = require('path');
 const { db } = require('./lib/db');
 const { createApp } = require('./lib/app');
@@ -18,7 +19,15 @@ if (!process.env.JWT_SECRET) {
 }
 
 const app = createApp((app) => {
-  app.use(express.static(path.join(__dirname, 'public')));
+  // Compress responses (the app's code shrinks about 4x on a first visit). The live-sync stream is
+  // left alone: compressing it would hold events back until a buffer fills.
+  app.use(compression({ filter: (req, res) => !req.path.startsWith('/api/live/') && compression.filter(req, res) }));
+  // Built files carry a content hash in their name, so browsers may keep them for a year.
+  app.use(express.static(path.join(__dirname, 'public'), {
+    setHeaders: (res, filePath) => {
+      if (filePath.includes(`${path.sep}assets${path.sep}`)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    },
+  }));
   // Live sessions carry their own rate limits; mounted first so the general limiter skips them.
   app.use('/api/live', createLiveRouter());
   app.use('/api', createApiRateLimiter());

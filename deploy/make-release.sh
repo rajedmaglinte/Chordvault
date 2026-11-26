@@ -8,6 +8,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 VERSION="${1:?usage: deploy/make-release.sh <version, e.g. 1.33.0-church.1>}"
 [ -z "$(git status --porcelain)" ] || { echo "commit your changes first"; exit 1; }
+# Start from a clean output folder so old hashed files from earlier builds are not shipped.
+rm -rf public/assets
 (cd frontend && npm run build >/dev/null)
 out=$(mktemp -d)
 git archive --prefix=chordvault/ HEAD | tar -x -C "$out"
