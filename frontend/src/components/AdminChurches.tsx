@@ -20,6 +20,16 @@ export function AdminChurches({ churches, onChanged }: { churches: Church[]; onC
   const { busy, run } = useBusyAction();
   const [name, setName] = useState('');
   const [created, setCreated] = useState<{ church: string; code: string } | null>(null);
+  const [editing, setEditing] = useState<{ id: number; name: string } | null>(null);
+
+  const rename = () => run(async () => {
+    if (!editing) return;
+    try {
+      await apiCall('PUT', `/api/admin/churches/${editing.id}`, { name: editing.name });
+      setEditing(null);
+      onChanged();
+    } catch (e) { notifyError(e); }
+  });
 
   const add = () => run(async () => {
     try {
@@ -39,14 +49,26 @@ export function AdminChurches({ churches, onChanged }: { churches: Church[]; onC
         </Text>
         <Stack gap={6} mb={14}>
           {churches.map(c => (
-            <Group key={c.id} justify="space-between" gap={8} wrap="nowrap">
-              <Text fw={600} truncate>{c.name}</Text>
-              <Text fz={13} c="dimmed" ta="right">
-                {c.member_count} member{c.member_count === 1 ? '' : 's'}
-                {c.super_admin ? ` · super admin @${c.super_admin}` : ' · no super admin yet'}
-                {` · since ${formatDbDate(c.created_at)}`}
-              </Text>
-            </Group>
+            editing?.id === c.id ? (
+              <Group key={c.id} gap={8} wrap="nowrap">
+                <TextInput aria-label={`New name for ${c.name}`} value={editing.name} flex={1} size="xs" maxLength={80} autoFocus
+                  onChange={e => setEditing({ id: c.id, name: e.currentTarget.value })} onKeyDown={e => { if (e.key === 'Enter') rename(); if (e.key === 'Escape') setEditing(null); }} />
+                <Button size="xs" onClick={rename} disabled={busy || editing.name.trim().length < 2}>Save</Button>
+                <Button size="xs" variant="default" onClick={() => setEditing(null)} disabled={busy}>Cancel</Button>
+              </Group>
+            ) : (
+              <Group key={c.id} justify="space-between" gap={8} wrap="nowrap">
+                <Group gap={6} wrap="nowrap" miw={0}>
+                  <Text fw={600} truncate>{c.name}</Text>
+                  <Button size="compact-xs" variant="subtle" onClick={() => setEditing({ id: c.id, name: c.name })} aria-label={`Rename ${c.name}`}>Rename</Button>
+                </Group>
+                <Text fz={13} c="dimmed" ta="right">
+                  {c.member_count} member{c.member_count === 1 ? '' : 's'}
+                  {c.super_admin ? ` \u00b7 super admin @${c.super_admin}` : ' \u00b7 no super admin yet'}
+                  {` \u00b7 since ${formatDbDate(c.created_at)}`}
+                </Text>
+              </Group>
+            )
           ))}
         </Stack>
         <Group gap={8} align="flex-end">
