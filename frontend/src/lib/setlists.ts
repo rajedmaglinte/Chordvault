@@ -49,6 +49,8 @@ export function enrichLocalEntry(e: LocalSetlistEntry, song: Song | null, idx: n
     target_key: e.target_key !== undefined ? e.target_key : legacyTransposeToTargetKey(song.content, e.transpose),
     nashville: e.nashville ?? 0,
     bpm: song.bpm || null,
+    metronome_bpm: e.metronome_bpm ?? null,
+    metronome_beats: e.metronome_beats ?? null,
     youtube_url: song.youtube_url || null,
     language: song.language || 'en',
   };

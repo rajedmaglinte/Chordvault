@@ -4,29 +4,15 @@ export const MIN_BPM = 30;
 export const MAX_BPM = 250;
 export const clampBpm = (bpm: number) => Math.min(MAX_BPM, Math.max(MIN_BPM, Math.round(bpm)));
 
-/**
- * Tempo from taps: the average of the last few intervals. Taps more than two seconds apart start
- * over. Returns null until there are at least two taps.
- */
-export function tapTempo(taps: number[]): number | null {
-  const recent: number[] = [];
-  for (let i = taps.length - 1; i >= 0; i--) {
-    if (recent.length && recent[0] - taps[i] > 2000) break;
-    recent.unshift(taps[i]);
-    if (recent.length === 6) break;
-  }
-  if (recent.length < 2) return null;
-  const gaps = recent.slice(1).map((t, i) => t - recent[i]);
-  const avg = gaps.reduce((a, b) => a + b, 0) / gaps.length;
-  return clampBpm(60000 / avg);
-}
-
-interface Settings { beatsPerBar: number; sound: boolean; volume: number }
+interface Settings { sound: boolean; volume: number }
 const STORAGE_KEY = 'cv_metronome';
-const DEFAULTS: Settings = { beatsPerBar: 4, sound: true, volume: 0.7 };
+const DEFAULTS: Settings = { sound: true, volume: 0.7 };
 
 function loadSettings(): Settings {
-  try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') }; } catch { return DEFAULTS; }
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    return { sound: typeof saved.sound === 'boolean' ? saved.sound : DEFAULTS.sound, volume: typeof saved.volume === 'number' ? saved.volume : DEFAULTS.volume };
+  } catch { return DEFAULTS; }
 }
 
 type AudioCtx = typeof AudioContext;
@@ -38,9 +24,11 @@ const SCHEDULE_AHEAD_S = 0.12;
 
 /**
  * A metronome on the Web Audio clock: notes are scheduled slightly ahead so timing stays steady
- * even when the page is busy. `beat` (0-based, -1 when stopped) drives the visual flash.
+ * even when the page is busy. Tempo and beats per bar come from the song (or its setlist entry);
+ * only sound and volume are personal settings. `beat` (0-based, -1 when stopped) drives the light.
  */
-export function useMetronome(songBpm: number | null | undefined) {
+export function useMetronome(songBpm: number | null | undefined, beatsPerBar: number | null | undefined = 4) {
+  const beats = beatsPerBar && beatsPerBar > 1 ? beatsPerBar : 4;
   const [bpm, setBpmState] = useState(() => clampBpm(songBpm || 80));
   const [running, setRunning] = useState(false);
   const [beat, setBeat] = useState(-1);
@@ -52,8 +40,9 @@ export function useMetronome(songBpm: number | null | undefined) {
   const beatRef = useRef(0);
   const bpmRef = useRef(bpm);
   const settingsRef = useRef(settings);
+  const beatsRef = useRef(beats);
+  useEffect(() => { beatsRef.current = beats; }, [beats]);
   const visualTimers = useRef<number[]>([]);
-  const tapsRef = useRef<number[]>([]);
 
   useEffect(() => { bpmRef.current = bpm; }, [bpm]);
   useEffect(() => {
@@ -97,12 +86,12 @@ export function useMetronome(songBpm: number | null | undefined) {
       while (nextTimeRef.current < ctx.currentTime + SCHEDULE_AHEAD_S) {
         const n = beatRef.current;
         const at = nextTimeRef.current;
-        click(ctx, at, n === 0 && settingsRef.current.beatsPerBar > 1);
+        click(ctx, at, n === 0);
         const delay = Math.max(0, (at - ctx.currentTime) * 1000);
         visualTimers.current.push(window.setTimeout(() => setBeat(n), delay));
         if (visualTimers.current.length > 32) visualTimers.current.splice(0, 16);
         nextTimeRef.current += 60 / bpmRef.current;
-        beatRef.current = (n + 1) % settingsRef.current.beatsPerBar;
+        beatRef.current = (n + 1) % beatsRef.current;
       }
     };
     schedule();
@@ -111,22 +100,13 @@ export function useMetronome(songBpm: number | null | undefined) {
   }, [click]);
 
   const toggle = useCallback(() => (running ? stop() : start()), [running, start, stop]);
-  const setBpm = useCallback((value: number) => setBpmState(clampBpm(value)), []);
-  const nudge = useCallback((delta: number) => setBpmState(b => clampBpm(b + delta)), []);
-  const tap = useCallback(() => {
-    const now = performance.now();
-    tapsRef.current = [...tapsRef.current.filter(t => now - t < 6000), now];
-    const t = tapTempo(tapsRef.current);
-    if (t) setBpmState(t);
-  }, []);
   const update = useCallback((patch: Partial<Settings>) => setSettings(s => ({ ...s, ...patch })), []);
 
   // A new song brings its own tempo; stop so a wrong tempo never carries over.
   useEffect(() => {
     stop();
     setBpmState(clampBpm(songBpm || 80));
-    tapsRef.current = [];
-  }, [songBpm, stop]);
+  }, [songBpm, beats, stop]);
 
   useEffect(() => () => {
     stop();
@@ -134,14 +114,12 @@ export function useMetronome(songBpm: number | null | undefined) {
   }, [stop]);
 
   return {
-    bpm, running, beat, songBpm: songBpm ?? null,
-    beatsPerBar: settings.beatsPerBar, sound: settings.sound, volume: settings.volume,
+    bpm, running, beat, hasTempo: !!songBpm,
+    beatsPerBar: beats, sound: settings.sound, volume: settings.volume,
     supported: !!audioContextClass(),
-    start, stop, toggle, setBpm, nudge, tap,
-    setBeatsPerBar: (n: number) => update({ beatsPerBar: n }),
+    start, stop, toggle,
     setSound: (on: boolean) => update({ sound: on }),
     setVolume: (v: number) => update({ volume: v }),
-    resetToSong: () => setBpmState(clampBpm(songBpm || 80)),
   };
 }
 

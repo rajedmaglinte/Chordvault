@@ -69,7 +69,7 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
 
   const content = entry ? entryContent(entry) : '';
   // Starts at the song's tempo; a new song stops it and loads that song's tempo.
-  const metronome = useMetronome(entry?.bpm);
+  const metronome = useMetronome(entry?.metronome_bpm ?? entry?.bpm, entry?.metronome_beats);
 
   const { user, isAdmin } = useAuth();
   const isOwner = setlist?.user_id && user && setlist.user_id === user.id;
@@ -269,6 +269,10 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
         onFontReset={resetFont}
         keepScreenOn={wakeLock.supported ? keepScreenOn : undefined}
         onKeepScreenOnChange={wakeLock.supported ? setKeepScreenOn : undefined}
+        metronomeSound={metronome.supported ? metronome.sound : undefined}
+        onMetronomeSoundChange={metronome.setSound}
+        metronomeVolume={metronome.volume}
+        onMetronomeVolumeChange={metronome.setVolume}
       />
     ),
     isModified,

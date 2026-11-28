@@ -38,6 +38,11 @@ export function useSetlistStore(local: boolean) {
       if (local) updateEntry(setlistId, idx, { target_key: targetKey });
       else await apiCall('PUT', `/api/setlists/${setlistId}/entries/${entryId}`, { target_key: targetKey });
     },
+    /** The metronome for one song in the setlist (null values go back to the song's tempo / 4 beats). */
+    async setEntryMetronome(setlistId: string, entryId: number | string, idx: number, patch: { metronome_bpm?: number | null; metronome_beats?: number | null }) {
+      if (local) updateEntry(setlistId, idx, patch);
+      else await apiCall('PUT', `/api/setlists/${setlistId}/entries/${entryId}`, patch);
+    },
     async saveMeta(setlistId: string, meta: SetlistMeta) {
       if (local) rename(setlistId, meta.name);
       else await apiCall('PUT', `/api/setlists/${setlistId}`, meta);

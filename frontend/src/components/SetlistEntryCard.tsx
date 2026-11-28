@@ -8,6 +8,7 @@ import { useI18n } from '../context/I18nContext';
 import { cardButtonProps } from '../lib/cardButton';
 import { CardTitle } from './CardTitle';
 import { CardMeta } from './CardMeta';
+import { EntryMetronomeButton, type MetronomePatch } from './EntryMetronomeButton';
 
 interface SetlistEntryCardProps {
   entry: SetlistEntry;
@@ -18,6 +19,8 @@ interface SetlistEntryCardProps {
   onStepKey: (entryId: number | string, idx: number, direction: 1 | -1) => void;
   onClick: (idx: number) => void;
   onEdit?: (idx: number) => void;
+  /** Saves this song's metronome settings (shown to whoever can edit the setlist). */
+  onSetMetronome?: (entryId: number | string, idx: number, patch: MetronomePatch) => Promise<void> | void;
   dragProps?: React.HTMLAttributes<HTMLDivElement>;
   handleProps?: React.HTMLAttributes<HTMLDivElement>;
   isDragging?: boolean;
@@ -32,6 +35,7 @@ export function SetlistEntryCard({
   onStepKey,
   onClick,
   onEdit,
+  onSetMetronome,
   dragProps,
   handleProps,
   isDragging,
@@ -80,6 +84,7 @@ export function SetlistEntryCard({
         <CardMeta>
           {entry.artist ? `${entry.artist} · ` : ''}
           {keyDisplay}
+          {(entry.metronome_bpm ?? entry.bpm) ? ` \u00b7 \u2669 ${entry.metronome_bpm ?? entry.bpm}` : ''}
         </CardMeta>
       </Box>
       {(isEditable || onEdit) && (
@@ -88,6 +93,9 @@ export function SetlistEntryCard({
             <Button variant="default" size="xs" leftSection={<IconPencil size={14} aria-hidden />} onClick={() => onEdit(idx)}>
               {t('songView.edit')}
             </Button>
+          )}
+          {isEditable && onSetMetronome && !entry.is_private_placeholder && (
+            <EntryMetronomeButton entry={entry} onSave={patch => onSetMetronome(entry.entry_id, idx, patch)} />
           )}
           {isEditable && (
             <>

@@ -1,4 +1,4 @@
-import { ActionIcon, Button, Group, Stack, Switch, Text } from '@mantine/core';
+import { ActionIcon, Button, Group, Slider, Stack, Switch, Text } from '@mantine/core';
 import { IconRestore } from '@tabler/icons-react';
 
 const switchStyles = { body: { justifyContent: 'space-between' } };
@@ -15,6 +15,11 @@ interface SettingsPanelProps {
   onFontReset: () => void;
   keepScreenOn?: boolean;
   onKeepScreenOnChange?: (val: boolean) => void;
+  /** Metronome sound (off = silent light only) and volume; set here, not over the lyrics. */
+  metronomeSound?: boolean;
+  onMetronomeSoundChange?: (val: boolean) => void;
+  metronomeVolume?: number;
+  onMetronomeVolumeChange?: (val: number) => void;
 }
 
 export function SettingsPanel({
@@ -29,6 +34,10 @@ export function SettingsPanel({
   onFontReset,
   keepScreenOn,
   onKeepScreenOnChange,
+  metronomeSound,
+  onMetronomeSoundChange,
+  metronomeVolume,
+  onMetronomeVolumeChange,
 }: SettingsPanelProps) {
   return (
     <>
@@ -36,6 +45,16 @@ export function SettingsPanel({
       <Stack gap="md">
         {keepScreenOn !== undefined && onKeepScreenOnChange && (
           <Switch labelPosition="left" label="Keep screen on" checked={keepScreenOn} onChange={(e) => onKeepScreenOnChange(e.target.checked)} styles={switchStyles} />
+        )}
+        {metronomeSound !== undefined && onMetronomeSoundChange && (
+          <Switch labelPosition="left" label={metronomeSound ? 'Metronome sound' : 'Metronome sound (off: light only)'} checked={metronomeSound}
+            onChange={(e) => onMetronomeSoundChange(e.target.checked)} styles={switchStyles} />
+        )}
+        {metronomeSound && metronomeVolume !== undefined && onMetronomeVolumeChange && (
+          <Group justify="space-between" wrap="nowrap" gap="md">
+            <Text size="sm">Metronome volume</Text>
+            <Slider flex={1} maw={160} min={0} max={1} step={0.05} value={metronomeVolume} onChange={onMetronomeVolumeChange} label={null} aria-label="Metronome volume" />
+          </Group>
         )}
         <Switch labelPosition="left" label="Number notation" checked={nashville} onChange={(e) => onNashvilleChange(e.target.checked)} styles={switchStyles} />
         <Switch labelPosition="left" label="Hide YouTube" checked={hideYt} onChange={(e) => onHideYtChange(e.target.checked)} styles={switchStyles} />

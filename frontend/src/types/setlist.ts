@@ -8,6 +8,9 @@ export interface SetlistEntry {
   target_key: string | null;
   nashville: number;
   bpm: number | null;
+  /** Metronome for this song in this setlist; null = the song's tempo / 4 beats per bar. */
+  metronome_bpm?: number | null;
+  metronome_beats?: number | null;
   youtube_url: string | null;
   language: string;
   is_private_placeholder?: boolean;
@@ -54,6 +57,8 @@ export interface LocalSetlistEntry {
   target_key?: string | null;  // absent on entries written before 1.23.0
   transpose?: number;          // legacy, read-only
   nashville: number;
+  metronome_bpm?: number | null;
+  metronome_beats?: number | null;
 }
 
 export interface LocalSetlist {

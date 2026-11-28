@@ -101,3 +101,22 @@ test('reorder rejects an id that is not an entry of this setlist', async () => {
   assert.equal((await res.json()).error, 'entry_ids must be the entries of this setlist');
   assert.deepEqual(order(), before);
 });
+
+test('each song in a setlist keeps its own metronome tempo and beats per bar', async () => {
+  const entry = await addEntry('G');
+  const put = body => api('PUT', `/setlists/${setlistId}/entries/${entry}`, body);
+  assert.equal((await put({ metronome_bpm: 76, metronome_beats: 3 })).status, 200);
+  let row = db.prepare('SELECT metronome_bpm, metronome_beats, target_key FROM setlist_songs WHERE id = ?').get(entry);
+  assert.deepEqual({ ...row }, { metronome_bpm: 76, metronome_beats: 3, target_key: 'G' });
+  // Other edits leave it alone; null clears it.
+  assert.equal((await put({ target_key: 'A' })).status, 200);
+  assert.equal(db.prepare('SELECT metronome_bpm FROM setlist_songs WHERE id = ?').get(entry).metronome_bpm, 76);
+  assert.equal((await put({ metronome_bpm: null })).status, 200);
+  row = db.prepare('SELECT metronome_bpm, metronome_beats FROM setlist_songs WHERE id = ?').get(entry);
+  assert.deepEqual({ ...row }, { metronome_bpm: null, metronome_beats: 3 });
+  for (const bad of [{ metronome_bpm: 10 }, { metronome_bpm: 80.5 }, { metronome_bpm: '80' }, { metronome_beats: 5 }]) {
+    assert.equal((await put(bad)).status, 400, JSON.stringify(bad));
+  }
+  const listed = await (await api('GET', `/setlists/${setlistId}`)).json();
+  assert.ok('metronome_bpm' in listed.entries[0] && 'metronome_beats' in listed.entries[0]);
+});

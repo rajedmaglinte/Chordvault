@@ -136,6 +136,14 @@ export function SetlistEditView({ setlistId, navigate }: SetlistEditViewProps) {
     } catch (e) { notifyError(e); }
   };
 
+  const handleSetMetronome = async (entryId: number | string, idx: number, patch: { metronome_bpm?: number | null; metronome_beats?: number | null }) => {
+    if (isWriteLocked() || !setlist) return;
+    try {
+      await store.setEntryMetronome(id, entryId, idx, patch);
+      setSetlist((prev) => prev && { ...prev, entries: prev.entries.map((e, i) => (i === idx ? { ...e, ...patch } : e)) });
+    } catch (e) { notifyError(e); }
+  };
+
   const play = (idx: number) => {
     if (isLocal && !getOne(String(setlistId))?.entries.length) return;
     navigate('setlist-play', setlistPlayParams(setlistId, idx));
@@ -216,6 +224,7 @@ export function SetlistEditView({ setlistId, navigate }: SetlistEditViewProps) {
               isLocal={isLocal}
               onRemove={removeEntry}
               onStepKey={handleStepEntryKey}
+              onSetMetronome={handleSetMetronome}
               onClick={play}
               onEdit={canEditSongs && !entry.is_private_placeholder ? editSong : undefined}
               dragProps={isEditable ? dragProps(idx) : undefined}

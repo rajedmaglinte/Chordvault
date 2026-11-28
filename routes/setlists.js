@@ -85,15 +85,24 @@ function createSetlistsRouter() {
     const setlistId = requireSetlistId(req.params.setlistId);
     const entryId = requireId(req.params.entryId, 'Invalid entry ID');
     resolveSetlist(setlistId, req.user.id);
-    const { target_key, nashville, content_override } = req.body;
+    const { target_key, nashville, content_override, metronome_bpm, metronome_beats } = req.body;
     assertValid(validateTargetKey(target_key));
     assertValid(validateNashville(nashville));
     assertValid(validateContentOverride(content_override));
+    // Metronome for this song in this setlist: null clears it (back to the song's tempo / 4 beats).
+    if (metronome_bpm !== undefined && metronome_bpm !== null && !(Number.isInteger(metronome_bpm) && metronome_bpm >= 30 && metronome_bpm <= 250)) {
+      throw new AppError('Metronome tempo must be a whole number from 30 to 250', 400);
+    }
+    if (metronome_beats !== undefined && metronome_beats !== null && ![2, 3, 4, 6].includes(metronome_beats)) {
+      throw new AppError('Beats per bar must be 2, 3, 4 or 6', 400);
+    }
     requireChanged(Setlist.updateSongEntry(entryId, setlistId, {
       targetKey: storedTargetKey(target_key),
       targetKeyProvided: 'target_key' in req.body,
       nashville,
       contentOverride: content_override,
+      metronomeBpm: metronome_bpm,
+      metronomeBeats: metronome_beats,
     }), 'Entry not found');
     res.json({ success: true });
   });
