@@ -1,13 +1,10 @@
-import { Button, Group, Stack, Switch, Text } from '@mantine/core';
+import { Button, Group, Stack, Text } from '@mantine/core';
 import { IconRestore } from '@tabler/icons-react';
 import type { ToolbarProps } from './Toolbar';
-import { KeyPicker } from './KeyPicker';
 import { ColumnsToggle, FitButton, TextSizeGroup } from './ToolbarControls';
 
-const switchStyles = { body: { justifyContent: 'space-between' } };
-
 /**
- * Controls for the song on screen (key, text size, fit, columns, numbers), kept in the settings
+ * Display controls for the song on screen (text size, fit, columns), kept in the settings
  * sheet on phones and tablets so the playing screen stays clear.
  */
 export function SongControlsPanel({ toolbar, columns = true }: { toolbar: ToolbarProps; columns?: boolean }) {
@@ -15,14 +12,9 @@ export function SongControlsPanel({ toolbar, columns = true }: { toolbar: Toolba
   return (
     <Stack gap="md">
       <Text size="sm" fw={600} c="dimmed">This song</Text>
-      <div>
-        <Group justify="space-between" mb={6}>
-          <Text size="sm">Key</Text>
-          <Text size="sm" fw={700} c="var(--cv-chord)">{toolbar.currentKey || '?'}</Text>
-        </Group>
-        <KeyPicker currentKey={toolbar.currentKey} onPickKey={toolbar.onPickKey} isModified={toolbar.isModified}
-          onSaveOnline={toolbar.onSaveOnline} onSaveLocal={toolbar.onSaveLocal} />
-      </div>
+      <Text size="xs" c="dimmed">
+        Key {toolbar.currentKey || '?'}. Keys and metronome tempos are set per song in the setlist (during practice), so they stay put during the service.
+      </Text>
       <Group justify="space-between" wrap="nowrap">
         <Text size="sm">Text size</Text>
         <Group gap={6} wrap="nowrap">
@@ -35,10 +27,6 @@ export function SongControlsPanel({ toolbar, columns = true }: { toolbar: Toolba
           <Text size="sm">Columns</Text>
           <ColumnsToggle twoCol={toolbar.twoCol} onTwoColToggle={toolbar.onTwoColToggle} overridden={overrides.twoCol} />
         </Group>
-      )}
-      {toolbar.onNashvilleChange && (
-        <Switch labelPosition="left" label="Number notation" checked={toolbar.nashville} disabled={toolbar.nashvilleDisabled}
-          onChange={(e) => toolbar.onNashvilleChange?.(e.target.checked)} styles={switchStyles} />
       )}
       {toolbar.onReset && (
         <Group justify="flex-end">

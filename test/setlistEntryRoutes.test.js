@@ -120,3 +120,32 @@ test('each song in a setlist keeps its own metronome tempo and beats per bar', a
   const listed = await (await api('GET', `/setlists/${setlistId}`)).json();
   assert.ok('metronome_bpm' in listed.entries[0] && 'metronome_beats' in listed.entries[0]);
 });
+
+test("a leader's key and tempo for a song come back in their next setlist", async () => {
+  // In the first setlist the leader sets the key and the metronome.
+  const first = await addEntry(undefined);
+  await api('PUT', `/setlists/${setlistId}/entries/${first}`, { target_key: 'E', metronome_bpm: 74, metronome_beats: 3 });
+  // A new setlist: adding the same song without choosing a key uses theirs.
+  const next = Number(db.prepare("INSERT INTO setlists (user_id, name) VALUES (?, 'next week')").run(userId).lastInsertRowid);
+  const added = await (await api('POST', `/setlists/${next}/songs`, { song_id: songId })).json();
+  assert.deepEqual(added.remembered, { target_key: 'E', metronome_bpm: 74, metronome_beats: 3 });
+  const row = db.prepare('SELECT target_key, metronome_bpm, metronome_beats FROM setlist_songs WHERE id = ?').get(added.entry_id);
+  assert.deepEqual({ ...row }, { target_key: 'E', metronome_bpm: 74, metronome_beats: 3 });
+  // Choosing a key explicitly still wins, and becomes the remembered one.
+  const explicit = await (await api('POST', `/setlists/${next}/songs`, { song_id: songId, target_key: 'D' })).json();
+  assert.equal(db.prepare('SELECT target_key FROM setlist_songs WHERE id = ?').get(explicit.entry_id).target_key, 'D');
+  const again = await (await api('POST', `/setlists/${next}/songs`, { song_id: songId })).json();
+  assert.equal(again.remembered.target_key, 'D');
+});
+
+test("each leader keeps their own key", async () => {
+  const otherId = db.prepare("INSERT INTO users (username, password_hash) VALUES ('leader-two', 'x')").run().lastInsertRowid;
+  const otherToken = jwt.sign({ id: otherId }, process.env.JWT_SECRET);
+  const theirs = Number(db.prepare("INSERT INTO setlists (user_id, name) VALUES (?, 'theirs')").run(otherId).lastInsertRowid);
+  const res = await fetch(`http://127.0.0.1:${server.address().port}/api/setlists/${theirs}/songs`, {
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${otherToken}` }, body: JSON.stringify({ song_id: songId }),
+  });
+  const added = await res.json();
+  assert.equal(added.remembered, null);
+  assert.equal(db.prepare('SELECT target_key FROM setlist_songs WHERE id = ?').get(added.entry_id).target_key, null);
+});

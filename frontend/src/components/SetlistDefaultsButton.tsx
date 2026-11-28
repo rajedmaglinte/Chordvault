@@ -13,7 +13,7 @@ export function SetlistDefaultsButton({ panel, songPanel }: { panel: ReactNode; 
   if (songPanel) {
     return (
       <>
-        <ActionIcon size="input-md" aria-label="Settings: key, text size and more" title="Settings" onClick={open}>
+        <ActionIcon size="input-md" aria-label="Settings: text size and more" title="Settings" onClick={open}>
           <IconAdjustmentsHorizontal size={22} aria-hidden />
         </ActionIcon>
         <Drawer opened={opened} onClose={close} position="bottom" size="auto" title="Settings" radius="lg"

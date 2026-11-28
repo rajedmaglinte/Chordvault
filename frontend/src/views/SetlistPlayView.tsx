@@ -316,7 +316,7 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
       <PlaybackTopBar layout={layout} title={entry.title} position={layout === 'desktop' ? `${index + 1} of ${total}, ${setlist.name}` : `${index + 1} of ${total} \u00b7 Key ${keyDisplay || '?'}`}
         nav={nav} onExit={exit} toolbar={toolbar} more={more}
         bpm={entry.bpm} youtubeUrl={hideYt ? null : entry.youtube_url} onEdit={editSong}
-        metronome={<MetronomeControl m={metronome} />} />
+        metronome={entry.metronome_bpm != null || layout === 'desktop' ? <MetronomeControl m={metronome} /> : undefined} />
       {layout === 'desktop' && hasLive && <div className="live-desktop" data-no-swipe>{liveBar}{sectionBar}</div>}
 
 

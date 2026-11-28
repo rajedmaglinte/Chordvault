@@ -5,6 +5,7 @@ const { validateListQuery, validateObjectBody, parseId, requireId, assertValid, 
 const { AppError, requireFound, requireChanged } = require('../lib/errors');
 const Setlist = require('../lib/models/setlist');
 const Song = require('../lib/models/song');
+const SongPrefs = require('../lib/models/songPrefs');
 const { maskSetlistEntry, canViewSongVisibility, canOpenChurchSetlist } = require('../lib/songAccess');
 const { normalizeVisibility } = require('../shared/access.mjs');
 
@@ -77,8 +78,18 @@ function createSetlistsRouter() {
     const song = requireFound(Song.findById(songIdParsed), 'Song not found');
     if (song.status === STATUS.PENDING) throw new AppError('Cannot add a pending correction to a setlist', 400);
     if (!canViewSongVisibility(req.user, song)) throw new AppError('Cannot add a private song you don\'t own', 403);
-    const result = Setlist.addSongEntry(id, songIdParsed, { targetKey: storedTargetKey(target_key), nashville });
-    res.json({ entry_id: result.entry_id, position: result.position });
+    // No key chosen: use this leader's own key (and tempo) for the song, if they set one before.
+    const pref = target_key === undefined ? SongPrefs.get(req.user.id, songIdParsed) : null;
+    const key = target_key !== undefined ? storedTargetKey(target_key) : (pref?.target_key ?? null);
+    const result = Setlist.addSongEntry(id, songIdParsed, { targetKey: key, nashville });
+    if (pref && (pref.metronome_bpm != null || pref.metronome_beats != null)) {
+      Setlist.updateSongEntry(result.entry_id, id, { metronomeBpm: pref.metronome_bpm, metronomeBeats: pref.metronome_beats });
+    }
+    if (target_key !== undefined) SongPrefs.save(req.user.id, songIdParsed, { targetKey: key });
+    res.json({
+      entry_id: result.entry_id, position: result.position,
+      remembered: pref ? { target_key: pref.target_key, metronome_bpm: pref.metronome_bpm, metronome_beats: pref.metronome_beats } : null,
+    });
   });
 
   router.put('/setlists/:setlistId/entries/:entryId', requireAuth, (req, res) => {
@@ -104,6 +115,16 @@ function createSetlistsRouter() {
       metronomeBpm: metronome_bpm,
       metronomeBeats: metronome_beats,
     }), 'Entry not found');
+    // Remember the leader's choice for this song, for their next setlists.
+    if ('target_key' in req.body || metronome_bpm !== undefined || metronome_beats !== undefined) {
+      const songId = Setlist.getEntryById(entryId, setlistId)?.song_id;
+      if (songId) {
+        SongPrefs.save(req.user.id, songId, {
+          targetKey: 'target_key' in req.body ? storedTargetKey(target_key) : undefined,
+          metronomeBpm: metronome_bpm, metronomeBeats: metronome_beats,
+        });
+      }
+    }
     res.json({ success: true });
   });
 

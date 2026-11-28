@@ -6141,7 +6141,8 @@ exports[`API responses match the recorded contract 2`] = `
     "status": 200,
     "body": {
       "entry_id": 6,
-      "position": 4
+      "position": 4,
+      "remembered": null
     }
   },
   {

@@ -22,10 +22,10 @@ export function useSetlistStore(local: boolean) {
       if (!sl) throw new Error(`Max ${MAX_LOCAL_SETLISTS} setlists`);
       return sl.id;
     },
-    async addSong(setlistId: string, song: SongRef, pick?: KeyPick) {
+    /** Online, a song added without a key comes back with the leader's remembered key/tempo, if any. */
+    async addSong(setlistId: string, song: SongRef, pick?: KeyPick): Promise<{ remembered?: { target_key: string | null; metronome_bpm: number | null } | null } | void> {
       if (!local) {
-        await apiCall('POST', `/api/setlists/${setlistId}/songs`, pick ? { song_id: song.id, target_key: pick.targetKey, nashville: pick.nashville } : { song_id: song.id });
-        return;
+        return apiCall('POST', `/api/setlists/${setlistId}/songs`, pick ? { song_id: song.id, target_key: pick.targetKey, nashville: pick.nashville } : { song_id: song.id });
       }
       const entry = { song_id: song.id, title: song.title, artist: song.artist || '', target_key: pick?.targetKey ?? null, nashville: pick?.nashville ? 1 : 0 };
       if (!addEntry(setlistId, entry)) throw new Error('Failed to add song');

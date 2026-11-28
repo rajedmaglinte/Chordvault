@@ -118,8 +118,10 @@ export function SetlistEditView({ setlistId, navigate }: SetlistEditViewProps) {
   const addSong = async (song: SongListItem) => {
     if (isWriteLocked()) return;
     try {
-      await store.addSong(id, song);
-      toast(t('setlist.songAdded'), 'success');
+      const res = await store.addSong(id, song);
+      const mine = res && res.remembered;
+      const parts = [mine?.target_key ? `key ${mine.target_key}` : '', mine?.metronome_bpm ? `${mine.metronome_bpm} bpm` : ''].filter(Boolean);
+      toast(parts.length ? `Added in your ${parts.join(', ')} (from your last setlist)` : t('setlist.songAdded'), 'success');
       setPickerOpen(false);
       load();
     } catch (e) { notifyError(e); }

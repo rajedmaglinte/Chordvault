@@ -44,7 +44,7 @@ describe('playback layouts', () => {
     expect(screen.queryByRole('button', { name: 'Multi-column layout' })).toBeNull();
   });
 
-  it('phone: key, text size and fit leave the playing screen for the Settings sheet', async () => {
+  it('phone: text size and fit leave the playing screen for the Settings sheet; keys are set in the setlist', async () => {
     layout.current = 'phone';
     const { container } = render(<SetlistPlayView setlistId={1} navigate={vi.fn()} />);
     const dock = container.querySelector('.playback-dock')!;
@@ -52,10 +52,11 @@ describe('playback layouts', () => {
       expect(dock.querySelector(`[aria-label="${name}"]`)).toBeNull();
     }
     expect(dock.querySelector('[data-testid="key-display"]')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Settings: key, text size and more' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Settings: text size and more' }));
     const sheet = await screen.findByRole('dialog');
     expect(sheet).toHaveTextContent('This song');
-    expect(screen.getByRole('group', { name: 'Transpose key' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Transpose key' })).toBeNull();
+    expect(sheet).toHaveTextContent('Keys and metronome tempos are set per song in the setlist');
     expect(screen.getByRole('button', { name: 'Increase font size' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Fit' })).toBeInTheDocument();
     expect(sheet).toHaveTextContent('Setlist defaults for all songs');
@@ -65,8 +66,21 @@ describe('playback layouts', () => {
     layout.current = 'tablet';
     render(<SetlistPlayView setlistId={1} navigate={vi.fn()} />);
     expect(screen.queryByRole('button', { name: 'Multi-column layout' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Settings: key, text size and more' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Settings: text size and more' }));
     expect(await screen.findByRole('button', { name: 'Multi-column layout' })).toBeInTheDocument();
+  });
+
+  it('phone: the metronome shows only for songs whose tempo was set in the setlist', () => {
+    layout.current = 'phone';
+    const { unmount } = render(<SetlistPlayView setlistId={1} navigate={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /metronome/i })).toBeNull();
+    unmount();
+    (window as unknown as { AudioContext: unknown }).AudioContext = class {};
+    const player = (useSetlistPlayer as Mock)();
+    (useSetlistPlayer as Mock).mockReturnValue({ ...player, entry: { ...player.entry, metronome_bpm: 74 } });
+    render(<SetlistPlayView setlistId={1} navigate={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Start metronome at 74 bpm' })).toBeInTheDocument();
+    delete (window as unknown as { AudioContext?: unknown }).AudioContext;
   });
 
   it('phone: the top bar shows the key under the title', () => {
