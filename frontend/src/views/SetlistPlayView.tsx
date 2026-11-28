@@ -22,6 +22,8 @@ import { SectionBar } from '../components/SectionBar';
 import { useSongSections } from '../hooks/useSongSections';
 import { useLiveSession } from '../hooks/useLiveSession';
 import { LiveBar } from '../components/LiveBar';
+import { MetronomeControl } from '../components/MetronomeControl';
+import { useMetronome } from '../hooks/useMetronome';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { EmptyState } from '../components/EmptyState';
 import { SetlistEntryEditor } from '../components/SetlistEntryEditor';
@@ -66,6 +68,8 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
   });
 
   const content = entry ? entryContent(entry) : '';
+  // Starts at the song's tempo; a new song stops it and loads that song's tempo.
+  const metronome = useMetronome(entry?.bpm);
 
   const { user, isAdmin } = useAuth();
   const isOwner = setlist?.user_id && user && setlist.user_id === user.id;
@@ -307,7 +311,8 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
     <div ref={swipeRef} className={`setlist-play-container${layout === 'desktop' ? '' : ' has-dock'}${showSections ? ' has-sections' : ''}${hasLive ? ' has-live' : ''}`}>
       <PlaybackTopBar layout={layout} title={entry.title} position={`${index + 1} of ${total}, ${setlist.name}`}
         nav={nav} onExit={exit} toolbar={toolbar} more={more}
-        bpm={entry.bpm} youtubeUrl={hideYt ? null : entry.youtube_url} onEdit={editSong} />
+        bpm={entry.bpm} youtubeUrl={hideYt ? null : entry.youtube_url} onEdit={editSong}
+        metronome={<MetronomeControl m={metronome} />} />
       {layout === 'desktop' && hasLive && <div className="live-desktop" data-no-swipe>{liveBar}{sectionBar}</div>}
 
 

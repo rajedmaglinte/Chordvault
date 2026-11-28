@@ -201,3 +201,15 @@
 .live-desktop .section-bar { padding-bottom: 10px; border-bottom: 1px solid var(--border); }
 .setlist-play-container.has-dock.has-live .chord-sheet-wrap { padding-bottom: calc(76px + 48px + env(safe-area-inset-bottom) + 32px); }
 .setlist-play-container.has-dock.has-sections.has-live .chord-sheet-wrap { padding-bottom: calc(140px + 48px + env(safe-area-inset-bottom) + 32px); }
+
+/* -- Metronome ---------------------------- */
+.metro-button { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border-radius: 10px; color: var(--text); font-weight: 700; }
+.metro-button:hover { background: var(--ctrl-hover); }
+.metro-button.running { background: color-mix(in srgb, var(--chord) 18%, transparent); }
+.metro-bpm { font-variant-numeric: tabular-nums; min-width: 2ch; }
+.metro-light { display: inline-block; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+.metro-light.on { animation: metro-flash 0.18s ease-out forwards; }
+.metro-light.on.accent { animation-name: metro-flash-accent; }
+@keyframes metro-flash { from { background: var(--text); box-shadow: 0 0 8px var(--text); } to { background: var(--border); box-shadow: none; } }
+@keyframes metro-flash-accent { from { background: var(--chord); box-shadow: 0 0 10px var(--chord); } to { background: var(--border); box-shadow: none; } }
+@media (prefers-reduced-motion: reduce) { .metro-light.on { animation: none; background: var(--text); } .metro-light.on.accent { background: var(--chord); } }

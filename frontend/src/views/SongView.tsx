@@ -16,6 +16,8 @@ import { useTwoCol } from '../hooks/useTwoCol';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { ChordSheet } from '../components/ChordSheet';
 import { SectionBar } from '../components/SectionBar';
+import { MetronomeControl } from '../components/MetronomeControl';
+import { useMetronome } from '../hooks/useMetronome';
 import { useSongSections } from '../hooks/useSongSections';
 import { usePlaybackLayout } from '../hooks/usePlaybackLayout';
 import { Toolbar } from '../components/Toolbar';
@@ -72,6 +74,7 @@ export function SongView({ songId, navigate }: SongViewProps) {
   const content = song?.content || '';
   const chord = useChordRenderer(content);
   const layout = usePlaybackLayout();
+  const metronome = useMetronome(song?.bpm);
   const songSections = useSongSections(chord.renderedHtml);
   const showSections = layout !== 'desktop' && songSections.sections.length > 1;
   const { setTargetKey: resetChordKey, setNashville: resetChordNashville } = chord;
@@ -174,7 +177,7 @@ export function SongView({ songId, navigate }: SongViewProps) {
         {song.artist && <Text size="lg" c="dimmed" mt={4}>{song.artist}</Text>}
         <Group gap="xs" mt="xs">
           {!isOwner && song.username && <span className="song-view-by">@{song.username}</span>}
-          {song.bpm && <Badge>{song.bpm} bpm</Badge>}
+          <MetronomeControl m={metronome} size="input-sm" />
           {song.language && <LanguageBadge code={song.language} />}
           {isOwner && song.visibility === VISIBILITY.PRIVATE && <Badge leftSection={<IconLock size={14} aria-hidden />}>Private</Badge>}
           {versions.length > 1 && (

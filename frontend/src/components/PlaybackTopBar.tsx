@@ -19,6 +19,8 @@ interface PlaybackTopBarProps {
   bpm?: number | null;
   youtubeUrl?: string | null;
   onEdit?: () => void;
+  /** The metronome button, when the page has one. */
+  metronome?: ReactNode;
 }
 
 function TitleBlock({ title, position, layout, bpm }: { title: string; position: string; layout: PlaybackLayout; bpm?: number | null }) {
@@ -31,7 +33,7 @@ function TitleBlock({ title, position, layout, bpm }: { title: string; position:
   );
 }
 
-export function PlaybackTopBar({ layout, title, position, nav, onExit, toolbar, more, bpm, youtubeUrl, onEdit }: PlaybackTopBarProps) {
+export function PlaybackTopBar({ layout, title, position, nav, onExit, toolbar, more, bpm, youtubeUrl, onEdit, metronome }: PlaybackTopBarProps) {
   const { t } = useI18n();
   const roomy = useMediaQuery('(min-width: 1200px)', true, { getInitialValueInEffect: false });
   if (layout === 'desktop') {
@@ -52,6 +54,7 @@ export function PlaybackTopBar({ layout, title, position, nav, onExit, toolbar, 
             <IconPencil size={22} aria-hidden />
           </ActionIcon>
         )}
+        {metronome}
         <Group flex={1} justify="flex-end" wrap="nowrap">
           <Toolbar {...toolbar} dense={!roomy} />
         </Group>
@@ -63,6 +66,7 @@ export function PlaybackTopBar({ layout, title, position, nav, onExit, toolbar, 
       <ActionIcon size="input-md" className="btn-exit" aria-label="Exit playback" onClick={onExit}><IconX size={22} aria-hidden /></ActionIcon>
       <TitleBlock title={title} position={position} layout={layout} />
       <Group gap={0} wrap="nowrap">
+        {metronome}
         {toolbar.settingsPanel && <SetlistDefaultsButton panel={toolbar.settingsPanel} />}
         {more}
       </Group>
