@@ -28,6 +28,8 @@
 
 /* Chords sit directly on their lyric; pairs and sections are spaced apart. */
 .chord-sheet .paragraph { margin-bottom: 1.45em; }
+/* Empty paragraphs (e.g. only directives) would otherwise add blank space at the top. */
+.chord-sheet .paragraph:empty { display: none; }
 .chord-sheet .paragraph:last-child { margin-bottom: 0; }
 .chord-sheet .paragraph:has(h3.label) { padding-top: 0.7em; }
 .chord-sheet .row { display: block; white-space: pre-wrap; line-height: 1.1; margin-bottom: 0.62em; }

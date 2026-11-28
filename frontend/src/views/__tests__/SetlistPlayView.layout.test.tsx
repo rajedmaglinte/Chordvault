@@ -34,7 +34,7 @@ beforeEach(() => {
 });
 
 describe('playback layouts', () => {
-  it('phone: dock with prev and next, no columns toggle, swipe-proof', () => {
+  it('phone: one slim dock row with prev and next, swipe-proof', () => {
     layout.current = 'phone';
     const { container } = render(<SetlistPlayView setlistId={1} navigate={vi.fn()} />);
     const dock = container.querySelector('.playback-dock')!;
@@ -44,23 +44,35 @@ describe('playback layouts', () => {
     expect(screen.queryByRole('button', { name: 'Multi-column layout' })).toBeNull();
   });
 
-  it('very narrow phone: Fit keeps its name but shows only the icon', () => {
+  it('phone: key, text size and fit leave the playing screen for the Settings sheet', async () => {
     layout.current = 'phone';
-    narrow.current = true;
-    render(<SetlistPlayView setlistId={1} navigate={vi.fn()} />);
-    const fit = screen.getByRole('button', { name: 'Fit' });
-    expect(fit).not.toHaveTextContent('Fit');
-    const key = screen.getByTestId('key-display');
-    expect(key.querySelector('.mantine-VisuallyHidden-root')).toHaveTextContent('Key');
-    expect(key).toHaveTextContent(/^Key\s*\S/);
+    const { container } = render(<SetlistPlayView setlistId={1} navigate={vi.fn()} />);
+    const dock = container.querySelector('.playback-dock')!;
+    for (const name of ['Increase font size', 'Fit', 'Multi-column layout']) {
+      expect(dock.querySelector(`[aria-label="${name}"]`)).toBeNull();
+    }
+    expect(dock.querySelector('[data-testid="key-display"]')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Settings: key, text size and more' }));
+    const sheet = await screen.findByRole('dialog');
+    expect(sheet).toHaveTextContent('This song');
+    expect(screen.getByRole('group', { name: 'Transpose key' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Increase font size' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Fit' })).toBeInTheDocument();
+    expect(sheet).toHaveTextContent('Setlist defaults for all songs');
   });
 
-  it('tablet: dock includes the columns toggle', () => {
+  it('tablet: the Settings sheet also has the columns toggle', async () => {
     layout.current = 'tablet';
-    const { container } = render(<SetlistPlayView setlistId={1} navigate={vi.fn()} />);
-    expect(container.querySelector('.playback-dock')).not.toBeNull();
-    expect(screen.getByRole('button', { name: 'Multi-column layout' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Setlist defaults' })).toBeInTheDocument();
+    render(<SetlistPlayView setlistId={1} navigate={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: 'Multi-column layout' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Settings: key, text size and more' }));
+    expect(await screen.findByRole('button', { name: 'Multi-column layout' })).toBeInTheDocument();
+  });
+
+  it('phone: the top bar shows the key under the title', () => {
+    layout.current = 'phone';
+    render(<SetlistPlayView setlistId={1} navigate={vi.fn()} />);
+    expect(screen.getByText('1 of 4 \u00b7 Key G')).toBeInTheDocument();
   });
 
   it('desktop: no dock, toolbar sits in the top bar', () => {
@@ -90,12 +102,11 @@ describe('playback layouts', () => {
     expect(container.querySelector('.playback-topbar')).toHaveAttribute('data-no-swipe');
   });
 
-  it('phone: a per-song number notation override shows on the dock and in the More menu', async () => {
+  it('phone: a per-song number notation override shows in the More menu', async () => {
     layout.current = 'phone';
     const player = (useSetlistPlayer as Mock)();
     (useSetlistPlayer as Mock).mockReturnValue({ ...player, entry: { ...player.entry, _num: 1 } });
     render(<SetlistPlayView setlistId={1} navigate={vi.fn()} />);
-    expect(screen.getByRole('group', { name: 'Key and notation' })).toHaveAttribute('data-overridden', 'true');
     fireEvent.click(screen.getByRole('button', { name: 'More display options' }));
     expect(await screen.findByRole('menuitem', { name: 'Number notation, on' })).toBeInTheDocument();
   });
@@ -109,6 +120,7 @@ describe('playback layouts', () => {
   });
 
   it('shows the full title and position without truncating', () => {
+    layout.current = 'desktop';
     render(<SetlistPlayView setlistId={1} navigate={vi.fn()} />);
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(LONG);
     expect(screen.getByText('1 of 4, Sunday worship')).toBeInTheDocument();

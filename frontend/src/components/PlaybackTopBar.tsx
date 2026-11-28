@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import type { PlaybackLayout } from '../hooks/usePlaybackLayout';
 import type { PlaybackNav } from './PlaybackDock';
 import { SetlistDefaultsButton } from './SetlistDefaultsButton';
+import { SongControlsPanel } from './SongControlsPanel';
 import { Toolbar, type ToolbarProps } from './Toolbar';
 import { useI18n } from '../context/I18nContext';
 
@@ -27,8 +28,8 @@ function TitleBlock({ title, position, layout, bpm }: { title: string; position:
   const compact = layout !== 'desktop';
   return (
     <Stack gap={0} className="playback-title" align={compact ? 'center' : undefined} ta={compact ? 'center' : undefined} flex={compact ? 1 : '0 1 auto'} miw={compact ? 0 : 140} px={6}>
-      <Title order={1} className="playback-title-main" fz={layout === 'phone' ? 18 : 21} lh={1.15}>{title}</Title>
-      <Text span size="sm" c="dimmed" fw={500}>{position}{bpm ? <>, <Text span inherit>{bpm} bpm</Text></> : null}</Text>
+      <Title order={1} className="playback-title-main" fz={layout === 'phone' ? 16 : layout === 'tablet' ? 18 : 21} lh={1.15} lineClamp={compact ? 1 : undefined}>{title}</Title>
+      <Text span size={compact ? 'xs' : 'sm'} c="dimmed" fw={500} lineClamp={compact ? 1 : undefined}>{position}{bpm && !compact ? <>, <Text span inherit>{bpm} bpm</Text></> : null}</Text>
     </Stack>
   );
 }
@@ -62,12 +63,14 @@ export function PlaybackTopBar({ layout, title, position, nav, onExit, toolbar, 
     );
   }
   return (
-    <Group component="header" className="playback-topbar compact" data-no-swipe gap={4} wrap="nowrap" justify="space-between" mih={60} px={8} bg="var(--cv-band)">
+    <Group component="header" className="playback-topbar compact" data-no-swipe gap={2} wrap="nowrap" justify="space-between" mih={48} px={4} bg="var(--cv-band)">
       <ActionIcon size="input-md" className="btn-exit" aria-label="Exit playback" onClick={onExit}><IconX size={22} aria-hidden /></ActionIcon>
       <TitleBlock title={title} position={position} layout={layout} />
       <Group gap={0} wrap="nowrap">
         {metronome}
-        {toolbar.settingsPanel && <SetlistDefaultsButton panel={toolbar.settingsPanel} />}
+        {toolbar.settingsPanel && (
+          <SetlistDefaultsButton panel={toolbar.settingsPanel} songPanel={<SongControlsPanel toolbar={toolbar} columns={layout === 'tablet'} />} />
+        )}
         {more}
       </Group>
     </Group>

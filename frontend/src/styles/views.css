@@ -96,10 +96,10 @@
 
 /* Sheet side padding follows the playback layouts: 48px desktop, 20px tablet, 18px phone. */
 @media (max-width: 1023px) {
-  .setlist-play-container .chord-sheet-wrap { padding: 20px 20px 48px; }
+  .setlist-play-container .chord-sheet-wrap { padding: 6px 16px 48px; }
 }
 @media (max-width: 639px) {
-  .setlist-play-container .chord-sheet-wrap { padding-inline: 18px; }
+  .setlist-play-container .chord-sheet-wrap { padding-inline: 12px; }
 }
 
 .setlist-play-container::-webkit-scrollbar {
@@ -119,8 +119,11 @@
 .playback-topbar .btn-exit, .playback-topbar .transpose-bar { flex-shrink: 0; }
 .playback-topbar .transpose-bar { margin: 0; padding: 0; background: none; flex-wrap: nowrap; }
 .playback-title-main { letter-spacing: -0.012em; text-wrap: balance; overflow-wrap: anywhere; }
-.playback-dock-bar { min-height: 76px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
-.setlist-play-container.has-dock .chord-sheet-wrap { padding-bottom: calc(76px + env(safe-area-inset-bottom) + 32px); }
+.playback-dock-bar { min-height: 64px; padding-bottom: env(safe-area-inset-bottom); }
+.playback-dock-bar .dock-middle { flex: 1; min-width: 0; display: flex; justify-content: center; }
+.playback-dock-bar .dock-middle .section-bar { width: 100%; }
+.playback-dock-bar .dock-nav { flex-shrink: 0; }
+.setlist-play-container.has-dock .chord-sheet-wrap { padding-bottom: calc(70px + env(safe-area-inset-bottom) + 16px); }
 
 /* -- Responsive --------------------------─ */
 @media (max-width: 900px) {
@@ -141,7 +144,7 @@
   gap: 7px;
   overflow-x: auto;
   scrollbar-width: none;
-  padding: 10px 12px 0;
+  padding: 8px 4px;
   background: var(--band);
   scroll-padding-inline: 12px;
   /* Let the row scroll sideways without the setlist swipe taking over. */
@@ -173,7 +176,7 @@
 .song-view.has-sections { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
 
 /* The setlist dock grows by one row of section buttons. */
-.setlist-play-container.has-dock.has-sections .chord-sheet-wrap { padding-bottom: calc(140px + env(safe-area-inset-bottom) + 32px); }
+
 
 /* A tapped section glows briefly so the eye lands on it. */
 .chord-sheet .paragraph.section-flash { animation: section-flash 1.2s ease-out; border-radius: 12px; }
@@ -184,7 +187,7 @@
 @media (prefers-reduced-motion: reduce) { .chord-sheet .paragraph.section-flash { animation: none; } }
 
 /* -- Live session strip ------------------- */
-.live-bar { padding: 8px 14px; background: var(--band); border-top: 1px solid var(--border); min-height: 48px; }
+.live-bar { padding: 4px 10px; background: var(--band); border-top: 1px solid var(--border); min-height: 40px; }
 .live-bar.is-leading { background: var(--chord); color: #fff; border-color: var(--chord); }
 .live-bar.is-following { background: color-mix(in srgb, var(--chord) 18%, var(--band)); }
 .live-dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; flex: 0 0 auto; }
@@ -199,8 +202,8 @@
 .live-bar.is-idle { border-left: 4px solid var(--chord); }
 .live-desktop .live-bar { border-top: none; border-bottom: 1px solid var(--border); padding-inline: 20px; }
 .live-desktop .section-bar { padding-bottom: 10px; border-bottom: 1px solid var(--border); }
-.setlist-play-container.has-dock.has-live .chord-sheet-wrap { padding-bottom: calc(76px + 48px + env(safe-area-inset-bottom) + 32px); }
-.setlist-play-container.has-dock.has-sections.has-live .chord-sheet-wrap { padding-bottom: calc(140px + 48px + env(safe-area-inset-bottom) + 32px); }
+.setlist-play-container.has-dock.has-live .chord-sheet-wrap { padding-bottom: calc(70px + 42px + env(safe-area-inset-bottom) + 16px); }
+
 
 /* -- Metronome ---------------------------- */
 .metro-button { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border-radius: 10px; color: var(--text); font-weight: 700; }
@@ -213,3 +216,6 @@
 @keyframes metro-flash { from { background: var(--text); box-shadow: 0 0 8px var(--text); } to { background: var(--border); box-shadow: none; } }
 @keyframes metro-flash-accent { from { background: var(--chord); box-shadow: 0 0 10px var(--chord); } to { background: var(--border); box-shadow: none; } }
 @media (prefers-reduced-motion: reduce) { .metro-light.on { animation: none; background: var(--text); } .metro-light.on.accent { background: var(--chord); } }
+.settings-sheet { max-height: 85dvh; }
+.setlist-play-container .chord-sheet > .paragraph:first-child,
+.setlist-play-container .chord-sheet > .paragraph:empty:first-child + .paragraph { padding-top: 0; }

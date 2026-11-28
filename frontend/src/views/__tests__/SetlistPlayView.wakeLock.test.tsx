@@ -5,7 +5,7 @@ import { useSetlistPlayer } from '../../hooks/useSetlistPlayer';
 import { useWakeLock } from '../../hooks/useWakeLock';
 
 vi.mock('../../hooks/useWakeLock', () => ({ useWakeLock: vi.fn(() => ({ supported: true })) }));
-vi.mock('../../hooks/usePlaybackLayout', () => ({ usePlaybackLayout: () => 'tablet' }));
+vi.mock('../../hooks/usePlaybackLayout', () => ({ usePlaybackLayout: () => 'desktop' }));
 vi.mock('../../lib/chords', async () => {
   const actual = await vi.importActual('../../lib/chords');
   return { ...actual, renderChordPro: vi.fn().mockReturnValue('<div id="chord-output">Song Content</div>') };

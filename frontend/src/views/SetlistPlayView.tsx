@@ -313,7 +313,7 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
 
   return (
     <div ref={swipeRef} className={`setlist-play-container${layout === 'desktop' ? '' : ' has-dock'}${showSections ? ' has-sections' : ''}${hasLive ? ' has-live' : ''}`}>
-      <PlaybackTopBar layout={layout} title={entry.title} position={`${index + 1} of ${total}, ${setlist.name}`}
+      <PlaybackTopBar layout={layout} title={entry.title} position={layout === 'desktop' ? `${index + 1} of ${total}, ${setlist.name}` : `${index + 1} of ${total} \u00b7 Key ${keyDisplay || '?'}`}
         nav={nav} onExit={exit} toolbar={toolbar} more={more}
         bpm={entry.bpm} youtubeUrl={hideYt ? null : entry.youtube_url} onEdit={editSong}
         metronome={<MetronomeControl m={metronome} />} />
@@ -340,7 +340,7 @@ export function SetlistPlayView({ setlistId, isLocal: _isLocal, initialIndex, na
         </>
       )}
       {layout !== 'desktop' && <PlaybackDock layout={layout} nav={nav} toolbar={toolbar}
-        top={<>{liveBar}{sectionBar}</>} />}
+        top={liveBar} sections={sectionBar} />}
     </div>
   );
 }

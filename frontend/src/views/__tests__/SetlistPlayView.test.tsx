@@ -9,7 +9,9 @@ import { SONG_ERRORS } from '../../../../shared/song-errors.mjs';
 // ─── Mocks ──────────────────────────────────────────────────────────
 
 vi.mock('../../components/CodeMirrorEditor', () => import('../../test/codeMirrorMock'));
-vi.mock('../../hooks/usePlaybackLayout', () => ({ usePlaybackLayout: () => 'tablet' }));
+afterEach(() => { playbackLayout.current = 'desktop'; });
+const playbackLayout = vi.hoisted(() => ({ current: 'desktop' as 'desktop' | 'tablet' | 'phone' }));
+vi.mock('../../hooks/usePlaybackLayout', () => ({ usePlaybackLayout: () => playbackLayout.current }));
 vi.mock('../../lib/chords', async () => {
   const actual = await vi.importActual('../../lib/chords');
   return {
@@ -82,6 +84,7 @@ describe('SetlistPlayView Auto-Fit', () => {
 
 describe('SetlistPlayView edit song', () => {
   it('opens the song editor from the More menu and comes back to the same song', async () => {
+    playbackLayout.current = 'tablet';
     const navigate = vi.fn();
     (useSetlistPlayer as Mock).mockReturnValue({
       setlist: { id: 4, entries: [] },
